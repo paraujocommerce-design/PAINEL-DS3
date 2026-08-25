@@ -1,0 +1,166 @@
+@import "tailwindcss" source(none);
+@source "../src";
+
+/*
+ * DS3 — Design System (estética Windows 2000)
+ *
+ * Todos os tokens visuais ficam centralizados aqui.
+ * Componentes NUNCA devem declarar cores literais.
+ */
+
+@theme inline {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-bevel-light: var(--bevel-light);
+  --color-bevel-highlight: var(--bevel-highlight);
+  --color-bevel-shadow: var(--bevel-shadow);
+  --color-bevel-dark: var(--bevel-dark);
+  --color-titlebar: var(--titlebar);
+  --color-titlebar-end: var(--titlebar-end);
+  --color-titlebar-foreground: var(--titlebar-foreground);
+  --font-sans: Tahoma, Verdana, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Lucida Console", "Courier New", monospace;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+}
+
+:root {
+  /* Paleta clássica */
+  --background: oklch(0.79 0.008 95);
+  --foreground: oklch(0.18 0 0);
+  --surface: oklch(0.855 0.009 95);
+  --surface-foreground: oklch(0.18 0 0);
+  --card: oklch(0.855 0.009 95);
+  --card-foreground: oklch(0.18 0 0);
+  --primary: oklch(0.36 0.11 262);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.855 0.009 95);
+  --secondary-foreground: oklch(0.18 0 0);
+  --muted: oklch(0.855 0.009 95);
+  --muted-foreground: oklch(0.44 0.005 95);
+  --accent: oklch(0.45 0.13 262);
+  --accent-foreground: oklch(0.99 0 0);
+  --destructive: oklch(0.46 0.19 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.62 0.14 75);
+  --warning-foreground: oklch(0.18 0 0);
+  --border: oklch(0.55 0.006 95);
+  --input: oklch(1 0 0);
+  --ring: oklch(0.3 0 0);
+
+  /* Bevels 3D */
+  --bevel-highlight: oklch(1 0 0);
+  --bevel-light: oklch(0.855 0.009 95);
+  --bevel-shadow: oklch(0.58 0.006 95);
+  --bevel-dark: oklch(0.33 0 0);
+
+  /* Title bars */
+  --titlebar: oklch(0.36 0.11 262);
+  --titlebar-end: oklch(0.55 0.12 255);
+  --titlebar-foreground: oklch(0.99 0 0);
+  --titlebar-inactive: oklch(0.6 0.01 95);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 1px dotted var(--color-ring);
+    outline-offset: 1px;
+  }
+}
+
+@layer components {
+  /* Relevo para fora (botões, painéis, barras) */
+  .w2k-out {
+    border-style: solid;
+    border-width: 2px;
+    border-top-color: var(--color-bevel-highlight);
+    border-left-color: var(--color-bevel-highlight);
+    border-right-color: var(--color-bevel-dark);
+    border-bottom-color: var(--color-bevel-dark);
+    box-shadow:
+      inset 1px 1px 0 0 var(--color-bevel-light),
+      inset -1px -1px 0 0 var(--color-bevel-shadow);
+    background-color: var(--color-surface);
+  }
+
+  /* Relevo para dentro (campos, áreas de conteúdo, status) */
+  .w2k-in {
+    border-style: solid;
+    border-width: 2px;
+    border-top-color: var(--color-bevel-shadow);
+    border-left-color: var(--color-bevel-shadow);
+    border-right-color: var(--color-bevel-highlight);
+    border-bottom-color: var(--color-bevel-highlight);
+    box-shadow:
+      inset 1px 1px 0 0 var(--color-bevel-dark),
+      inset -1px -1px 0 0 var(--color-bevel-light);
+    background-color: var(--color-surface);
+  }
+
+  /* Sulco fino (separadores, agrupamentos) */
+  .w2k-groove {
+    border: 1px solid var(--color-bevel-shadow);
+    box-shadow: 1px 1px 0 0 var(--color-bevel-highlight) inset;
+  }
+
+  .w2k-pressed {
+    border-top-color: var(--color-bevel-dark);
+    border-left-color: var(--color-bevel-dark);
+    border-right-color: var(--color-bevel-highlight);
+    border-bottom-color: var(--color-bevel-highlight);
+    box-shadow: inset 1px 1px 0 0 var(--color-bevel-shadow);
+  }
+
+  .w2k-titlebar {
+    background: linear-gradient(90deg, var(--color-titlebar), var(--color-titlebar-end));
+    color: var(--color-titlebar-foreground);
+  }
+
+  .w2k-scroll {
+    scrollbar-color: var(--color-bevel-shadow) var(--color-background);
+    scrollbar-width: thin;
+  }
+}
