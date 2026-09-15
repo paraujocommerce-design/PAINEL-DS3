@@ -35,6 +35,7 @@ export function DialogNovoRepresentante({
   supervisorId?: string | undefined;
   supervisorLabel: string;
 }) {
+  const [codigo, setCodigo] = useState("");
   const [nome, setNome] = useState("");
   const [dataCadastro, setDataCadastro] = useState(hojeISO());
   const [observacao, setObservacao] = useState("");
@@ -42,6 +43,7 @@ export function DialogNovoRepresentante({
   const criar = useCriarRepresentante();
 
   function fechar() {
+    setCodigo("");
     setNome("");
     setObservacao("");
     setDataCadastro(hojeISO());
@@ -53,10 +55,13 @@ export function DialogNovoRepresentante({
   async function enviar(event: FormEvent) {
     event.preventDefault();
     setErro(null);
+    if (!/^\d{4}$/.test(codigo.trim())) {
+      return setErro("Informe o código do representante com exatamente 4 dígitos.");
+    }
     if (!nome.trim()) return setErro("Informe o nome do representante.");
     if (!supervisorId) return setErro("Contexto de supervisão indisponível.");
     try {
-      await criar.mutateAsync({ nome, supervisorId, dataCadastro, observacao });
+      await criar.mutateAsync({ codigo, nome, supervisorId, dataCadastro, observacao });
       fechar();
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Não foi possível cadastrar.");
@@ -72,6 +77,17 @@ export function DialogNovoRepresentante({
     >
       <form id="w2k-form" onSubmit={enviar} className="flex flex-col gap-3">
         {erro ? <Alert tone="error" title={erro} /> : null}
+        <Field label="Código (4 dígitos)" htmlFor="rep-codigo">
+          <Input
+            id="rep-codigo"
+            value={codigo}
+            onChange={(event) => setCodigo(event.target.value.replace(/\D/g, "").slice(0, 4))}
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="0000"
+            required
+          />
+        </Field>
         <Field label="Nome" htmlFor="rep-nome">
           <Input
             id="rep-nome"
