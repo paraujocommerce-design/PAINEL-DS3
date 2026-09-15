@@ -12,4 +12,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Hospedagem de produção é a Vercel (não o Cloudflare padrão do wrapper Lovable).
+  // Preset explícito em vez de depender de auto-detecção de plataforma no build.
+  nitro: {
+    preset: "vercel",
+  },
 });

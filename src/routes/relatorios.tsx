@@ -5,9 +5,15 @@ export const Route = createFileRoute("/relatorios")({
   head: () => ({
     meta: [
       { title: "Relatórios — Painel de Gestão DS3" },
-      { name: "description", content: "Módulo reservado para relatórios. Nenhum relatório analítico foi implementado." },
+      {
+        name: "description",
+        content: "Módulo reservado para relatórios. Nenhum relatório analítico foi implementado.",
+      },
       { property: "og:title", content: "Relatórios — Painel de Gestão DS3" },
-      { property: "og:description", content: "Módulo reservado para relatórios. Nenhum relatório analítico foi implementado." },
+      {
+        property: "og:description",
+        content: "Módulo reservado para relatórios. Nenhum relatório analítico foi implementado.",
+      },
     ],
   }),
   component: Pagina,
@@ -19,7 +25,10 @@ function Pagina() {
       title="Relatórios"
       description="Módulo reservado para relatórios. Nenhum relatório analítico foi implementado."
       sections={[
-        { title: "Relatórios disponíveis", description: "Área reservada. Regras ainda não definidas." },
+        {
+          title: "Relatórios disponíveis",
+          description: "Área reservada. Regras ainda não definidas.",
+        },
       ]}
     />
   );

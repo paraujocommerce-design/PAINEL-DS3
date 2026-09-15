@@ -95,7 +95,12 @@ export function Toolbar({ children }: { children: ReactNode }) {
 }
 
 export function ToolbarSeparator() {
-  return <span aria-hidden className="mx-1 h-5 w-px bg-bevel-shadow shadow-[1px_0_0_var(--color-bevel-highlight)]" />;
+  return (
+    <span
+      aria-hidden
+      className="mx-1 h-5 w-px bg-bevel-shadow shadow-[1px_0_0_var(--color-bevel-highlight)]"
+    />
+  );
 }
 
 export type TabItem = { value: string; label: string };

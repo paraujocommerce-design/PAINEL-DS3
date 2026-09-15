@@ -343,12 +343,14 @@ export function useCriarRepresentante() {
   const invalidar = useInvalidar();
   return useMutation({
     mutationFn: async (entrada: {
+      codigo: string;
       nome: string;
       supervisorId: string;
       dataCadastro: string;
       observacao?: string;
     }) => {
       const { error } = await cliente().rpc("criar_representante", {
+        p_codigo: entrada.codigo.trim(),
         p_nome: entrada.nome.trim(),
         p_supervisor_id: entrada.supervisorId,
         p_data_cadastro: entrada.dataCadastro,
@@ -357,7 +359,7 @@ export function useCriarRepresentante() {
       if (error) {
         throw new Error(
           error.code === "23505"
-            ? "Já existe um representante cadastrado com esse nome."
+            ? "Já existe um representante cadastrado com esse código ou nome."
             : error.message,
         );
       }

@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Window, Tabs, EmptyState } from "@/components/w2k";
 
-const DESC =
-  "Frente própria de Certificado Digital, separada das demais frentes comerciais.";
+const DESC = "Frente própria de Certificado Digital, separada das demais frentes comerciais.";
 
 export const Route = createFileRoute("/certificado-digital")({
   head: () => ({

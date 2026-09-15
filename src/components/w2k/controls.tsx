@@ -59,11 +59,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   );
 }
 
-export function Select({
-  className,
-  children,
-  ...props
-}: SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}

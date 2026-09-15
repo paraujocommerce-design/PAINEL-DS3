@@ -5,9 +5,15 @@ export const Route = createFileRoute("/acoes-gerenciais")({
   head: () => ({
     meta: [
       { title: "Ações Gerenciais — Painel de Gestão DS3" },
-      { name: "description", content: "Módulo reservado para registro e acompanhamento de ações gerenciais." },
+      {
+        name: "description",
+        content: "Módulo reservado para registro e acompanhamento de ações gerenciais.",
+      },
       { property: "og:title", content: "Ações Gerenciais — Painel de Gestão DS3" },
-      { property: "og:description", content: "Módulo reservado para registro e acompanhamento de ações gerenciais." },
+      {
+        property: "og:description",
+        content: "Módulo reservado para registro e acompanhamento de ações gerenciais.",
+      },
     ],
   }),
   component: Pagina,

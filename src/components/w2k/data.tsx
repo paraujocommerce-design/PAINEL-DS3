@@ -59,10 +59,7 @@ export function Table({
             ))
           ) : (
             <tr>
-              <td
-                colSpan={columns.length}
-                className="px-2 py-6 text-center text-muted-foreground"
-              >
+              <td colSpan={columns.length} className="px-2 py-6 text-center text-muted-foreground">
                 {emptyMessage}
               </td>
             </tr>
@@ -123,10 +120,7 @@ export function IndicatorSlot({
         {label}
       </span>
       <span
-        className={cn(
-          "font-mono text-lg",
-          hasValue ? "text-foreground" : "text-muted-foreground",
-        )}
+        className={cn("font-mono text-lg", hasValue ? "text-foreground" : "text-muted-foreground")}
       >
         {hasValue ? `${value}${unit ? ` ${unit}` : ""}` : "Sem dado"}
       </span>
