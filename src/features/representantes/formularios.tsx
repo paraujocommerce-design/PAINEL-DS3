@@ -24,20 +24,35 @@ function Rodape({
   );
 }
 
+/** Converte "1.234,56" ou "1234.56" em número. Vazio = null (nunca zero). */
+function valorParaNumero(texto: string): number | null {
+  const limpo = texto.trim();
+  if (!limpo) return null;
+  const normalizado = limpo.replace(/\./g, "").replace(",", ".");
+  const numero = Number(normalizado);
+  return Number.isFinite(numero) ? numero : Number.NaN;
+}
+
 export function DialogNovoRepresentante({
   open,
   onClose,
   supervisorId,
   supervisorLabel,
+  possiveisLideres,
 }: {
   open: boolean;
   onClose: () => void;
   supervisorId?: string | undefined;
   supervisorLabel: string;
+  possiveisLideres: Array<{ id: string; nome: string }>;
 }) {
   const [codigo, setCodigo] = useState("");
   const [nome, setNome] = useState("");
   const [dataCadastro, setDataCadastro] = useState(hojeISO());
+  const [valorPremiacao, setValorPremiacao] = useState("");
+  const [valorComissao, setValorComissao] = useState("");
+  const [metaMinima, setMetaMinima] = useState("");
+  const [liderId, setLiderId] = useState("");
   const [observacao, setObservacao] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const criar = useCriarRepresentante();
@@ -46,6 +61,10 @@ export function DialogNovoRepresentante({
     setCodigo("");
     setNome("");
     setObservacao("");
+    setValorPremiacao("");
+    setValorComissao("");
+    setMetaMinima("");
+    setLiderId("");
     setDataCadastro(hojeISO());
     setErro(null);
     criar.reset();
@@ -60,8 +79,33 @@ export function DialogNovoRepresentante({
     }
     if (!nome.trim()) return setErro("Informe o nome do representante.");
     if (!supervisorId) return setErro("Contexto de supervisão indisponível.");
+
+    const premiacao = valorParaNumero(valorPremiacao);
+    if (Number.isNaN(premiacao)) return setErro("Valor da premiação por contrato inválido.");
+    if (premiacao !== null && premiacao < 0)
+      return setErro("Valor da premiação por contrato não pode ser negativo.");
+
+    const comissao = valorParaNumero(valorComissao);
+    if (Number.isNaN(comissao)) return setErro("Valor da comissão de liderança inválido.");
+    if (comissao !== null && comissao < 0)
+      return setErro("Valor da comissão de liderança não pode ser negativo.");
+
+    const meta = metaMinima.trim() ? Number(metaMinima.trim()) : null;
+    if (meta !== null && (!Number.isInteger(meta) || meta <= 0))
+      return setErro("Meta mínima mensal deve ser um número inteiro maior que zero.");
+
     try {
-      await criar.mutateAsync({ codigo, nome, supervisorId, dataCadastro, observacao });
+      await criar.mutateAsync({
+        codigo,
+        nome,
+        supervisorId,
+        dataCadastro,
+        observacao,
+        valorPremiacaoContrato: premiacao,
+        valorComissaoLideranca: comissao,
+        metaMinimaMensal: meta,
+        liderId: liderId || null,
+      });
       fechar();
     } catch (causa) {
       setErro(causa instanceof Error ? causa.message : "Não foi possível cadastrar.");
@@ -107,6 +151,47 @@ export function DialogNovoRepresentante({
             max={hojeISO()}
             onChange={(event) => setDataCadastro(event.target.value)}
             required
+          />
+        </Field>
+        <Field label="Premiação por contrato (R$)" htmlFor="rep-premiacao">
+          <Input
+            id="rep-premiacao"
+            value={valorPremiacao}
+            onChange={(event) => setValorPremiacao(event.target.value)}
+            inputMode="decimal"
+            placeholder="deixe vazio se ainda não definido"
+          />
+        </Field>
+        <Field label="Meta mínima de contratos no mês" htmlFor="rep-meta-minima">
+          <Input
+            id="rep-meta-minima"
+            value={metaMinima}
+            onChange={(event) => setMetaMinima(event.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            placeholder="deixe vazio se ainda não definida"
+          />
+        </Field>
+        <Field label="Filiado ao líder (opcional)" htmlFor="rep-lider">
+          <Select
+            id="rep-lider"
+            value={liderId}
+            onChange={(event) => setLiderId(event.target.value)}
+          >
+            <option value="">Nenhum — não pertence a uma equipe</option>
+            {possiveisLideres.map((lider) => (
+              <option key={lider.id} value={lider.id}>
+                {lider.nome}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Comissão de liderança por contrato da equipe (R$)" htmlFor="rep-comissao">
+          <Input
+            id="rep-comissao"
+            value={valorComissao}
+            onChange={(event) => setValorComissao(event.target.value)}
+            inputMode="decimal"
+            placeholder="preencha apenas se este representante for líder"
           />
         </Field>
         <Field label="Observação (opcional)" htmlFor="rep-obs">

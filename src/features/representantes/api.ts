@@ -348,13 +348,23 @@ export function useCriarRepresentante() {
       supervisorId: string;
       dataCadastro: string;
       observacao?: string;
+      /** Valor padrão por contrato. `null` = não cadastrado (nunca zero). */
+      valorPremiacaoContrato?: number | null;
+      /** Quanto recebe por contrato da equipe, quando for líder. */
+      valorComissaoLideranca?: number | null;
+      metaMinimaMensal?: number | null;
+      /** Líder ao qual este representante fica filiado, se houver. */
+      liderId?: string | null;
     }) => {
-      const { error } = await cliente().rpc("criar_representante", {
+      const { data, error } = await cliente().rpc("criar_representante", {
         p_codigo: entrada.codigo.trim(),
         p_nome: entrada.nome.trim(),
         p_supervisor_id: entrada.supervisorId,
         p_data_cadastro: entrada.dataCadastro,
         p_observacao: entrada.observacao?.trim() || null,
+        p_valor_premiacao_contrato: entrada.valorPremiacaoContrato ?? null,
+        p_valor_comissao_lideranca: entrada.valorComissaoLideranca ?? null,
+        p_meta_minima_mensal: entrada.metaMinimaMensal ?? null,
       });
       if (error) {
         throw new Error(
@@ -363,6 +373,48 @@ export function useCriarRepresentante() {
             : error.message,
         );
       }
+
+      // Filiação é um fato separado do cadastro: só grava quando informada.
+      if (entrada.liderId) {
+        const novoId = typeof data === "string" ? data : null;
+        if (!novoId) {
+          throw new Error(
+            "Representante cadastrado, mas não foi possível vinculá-lo ao líder. Defina a filiação pelo cadastro.",
+          );
+        }
+        const { error: erroLider } = await cliente().rpc("definir_lider_representante", {
+          p_representante_id: novoId,
+          p_lider_id: entrada.liderId,
+          p_data: entrada.dataCadastro,
+        });
+        if (erroLider) {
+          throw new Error(
+            `Representante cadastrado, mas a filiação ao líder falhou: ${erroLider.message}`,
+          );
+        }
+      }
+    },
+    onSuccess: () => void invalidar(),
+  });
+}
+
+/** Edição dos valores de premiação/meta já cadastrados. */
+export function useAtualizarValoresRepresentante() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: async (entrada: {
+      representanteId: string;
+      valorPremiacaoContrato: number | null;
+      valorComissaoLideranca: number | null;
+      metaMinimaMensal: number | null;
+    }) => {
+      const { error } = await cliente().rpc("atualizar_valores_representante", {
+        p_representante_id: entrada.representanteId,
+        p_valor_premiacao_contrato: entrada.valorPremiacaoContrato,
+        p_valor_comissao_lideranca: entrada.valorComissaoLideranca,
+        p_meta_minima_mensal: entrada.metaMinimaMensal,
+      });
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => void invalidar(),
   });
