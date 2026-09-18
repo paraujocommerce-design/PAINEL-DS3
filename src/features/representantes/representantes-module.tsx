@@ -34,7 +34,12 @@ import {
   rotuloPeriodo,
   type StatusAtividade,
 } from "./dominio";
-import { DialogMeta, DialogNovoRepresentante, DialogRegistrarProducao } from "./formularios";
+import {
+  DialogEditarRepresentante,
+  DialogMeta,
+  DialogNovoRepresentante,
+  DialogRegistrarProducao,
+} from "./formularios";
 import { DialogHistorico } from "./detalhe";
 
 /**
@@ -72,6 +77,7 @@ export function RepresentantesModule({ supervisor }: { supervisor: SupervisorCon
   const [busca, setBusca] = useState("");
   const [dialogo, setDialogo] = useState<"representante" | "producao" | "meta" | null>(null);
   const [detalhe, setDetalhe] = useState<LinhaRepresentante | null>(null);
+  const [editando, setEditando] = useState<string | null>(null);
 
   const intervalo = useMemo(() => limitesDoPeriodo(periodo), [periodo]);
   const referencia = useMemo(() => referenciaDoPeriodo(periodo), [periodo]);
@@ -307,7 +313,14 @@ export function RepresentantesModule({ supervisor }: { supervisor: SupervisorCon
                 status: ROTULO_STATUS[linha.status as StatusAtividade],
                 dias: linha.diasSemVenda === null ? "—" : linha.diasSemVenda,
                 ultima: formatarData(linha.representante.ultima_producao),
-                acao: <ClassicButton onClick={() => setDetalhe(linha)}>Histórico</ClassicButton>,
+                acao: (
+                  <span className="flex gap-1">
+                    <ClassicButton onClick={() => setEditando(linha.representante.id)}>
+                      Editar
+                    </ClassicButton>
+                    <ClassicButton onClick={() => setDetalhe(linha)}>Histórico</ClassicButton>
+                  </span>
+                ),
               }))}
             />
           )}
@@ -331,6 +344,11 @@ export function RepresentantesModule({ supervisor }: { supervisor: SupervisorCon
         onClose={() => setDialogo(null)}
         supervisorId={supervisorId}
         periodo={periodo}
+      />
+      <DialogEditarRepresentante
+        representanteId={editando}
+        onClose={() => setEditando(null)}
+        possiveisLideres={carteiraAtual.data ?? []}
       />
       <DialogHistorico linha={detalhe} onClose={() => setDetalhe(null)} />
     </Window>
