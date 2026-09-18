@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { hojeISO } from "./dominio";
 
 export type Supervisor = { id: string; slug: string; nome: string };
 
@@ -393,6 +394,103 @@ export function useCriarRepresentante() {
           );
         }
       }
+    },
+    onSuccess: () => void invalidar(),
+  });
+}
+
+/** Configuração atual do representante: valores, meta e filiação vigente. */
+export type ConfiguracaoRepresentante = {
+  id: string;
+  codigo: string;
+  nome: string;
+  valor_premiacao_contrato: number | null;
+  valor_comissao_lideranca: number | null;
+  meta_minima_mensal: number | null;
+  e_lider: boolean;
+  qtd_equipe: number;
+  lider_id: string | null;
+  lider_codigo: string | null;
+  lider_nome: string | null;
+};
+
+export function useConfiguracaoRepresentante(representanteId?: string) {
+  return useQuery({
+    queryKey: ["representantes", "configuracao", representanteId ?? ""],
+    enabled: Boolean(representanteId),
+    queryFn: async (): Promise<ConfiguracaoRepresentante | null> => {
+      const { data, error } = await cliente()
+        .from("v_representantes_configuracao")
+        .select("*")
+        .eq("id", representanteId!)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) return null;
+      const linha = data as Record<string, unknown>;
+      return {
+        id: String(linha["id"]),
+        codigo: String(linha["codigo"]),
+        nome: String(linha["nome"]),
+        valor_premiacao_contrato: numeroOuNulo(linha["valor_premiacao_contrato"]),
+        valor_comissao_lideranca: numeroOuNulo(linha["valor_comissao_lideranca"]),
+        meta_minima_mensal: numeroOuNulo(linha["meta_minima_mensal"]),
+        e_lider: Boolean(linha["e_lider"]),
+        qtd_equipe: numeroOuNulo(linha["qtd_equipe"]) ?? 0,
+        lider_id: (linha["lider_id"] as string | null) ?? null,
+        lider_codigo: (linha["lider_codigo"] as string | null) ?? null,
+        lider_nome: (linha["lider_nome"] as string | null) ?? null,
+      };
+    },
+  });
+}
+
+/** Correção de nome/observação — registra o valor anterior no histórico. */
+export function useAtualizarCadastroRepresentante() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: async (entrada: {
+      representanteId: string;
+      nome: string;
+      observacao?: string;
+    }) => {
+      const { error } = await cliente().rpc("atualizar_cadastro_representante", {
+        p_representante_id: entrada.representanteId,
+        p_nome: entrada.nome.trim(),
+        p_observacao: entrada.observacao?.trim() || null,
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => void invalidar(),
+  });
+}
+
+/** Define ou troca o líder; `liderId: null` encerra a filiação atual. */
+export function useDefinirLiderRepresentante() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: async (entrada: {
+      representanteId: string;
+      liderId: string | null;
+      data?: string;
+    }) => {
+      const parametros = entrada.liderId
+        ? {
+            rpc: "definir_lider_representante" as const,
+            args: {
+              p_representante_id: entrada.representanteId,
+              p_lider_id: entrada.liderId,
+              p_data: entrada.data ?? hojeISO(),
+            },
+          }
+        : {
+            rpc: "encerrar_lideranca_representante" as const,
+            args: {
+              p_representante_id: entrada.representanteId,
+              p_data: entrada.data ?? hojeISO(),
+            },
+          };
+      const { error } = await cliente().rpc(parametros.rpc, parametros.args);
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => void invalidar(),
   });

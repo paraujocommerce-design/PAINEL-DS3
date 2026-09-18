@@ -1,6 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { Dialog, ClassicButton, Field, Input, Select, Alert } from "@/components/w2k";
-import { useCadastrarMeta, useCriarRepresentante, useRegistrarProducao, type Meta } from "./api";
+import {
+  useAtualizarCadastroRepresentante,
+  useAtualizarValoresRepresentante,
+  useCadastrarMeta,
+  useConfiguracaoRepresentante,
+  useCriarRepresentante,
+  useDefinirLiderRepresentante,
+  useRegistrarProducao,
+  type Meta,
+} from "./api";
 import { hojeISO, limitesDoPeriodo } from "./dominio";
 
 function Rodape({
@@ -202,6 +211,181 @@ export function DialogNovoRepresentante({
           />
         </Field>
       </form>
+    </Dialog>
+  );
+}
+
+/**
+ * Edição do cadastro de um representante já existente.
+ * O código nunca muda — é a identidade dele no sistema.
+ */
+export function DialogEditarRepresentante({
+  representanteId,
+  onClose,
+  possiveisLideres,
+}: {
+  representanteId: string | null;
+  onClose: () => void;
+  possiveisLideres: Array<{ id: string; nome: string }>;
+}) {
+  const configuracao = useConfiguracaoRepresentante(representanteId ?? undefined);
+  const atualizarCadastro = useAtualizarCadastroRepresentante();
+  const atualizarValores = useAtualizarValoresRepresentante();
+  const definirLider = useDefinirLiderRepresentante();
+
+  const [nome, setNome] = useState("");
+  const [valorPremiacao, setValorPremiacao] = useState("");
+  const [valorComissao, setValorComissao] = useState("");
+  const [metaMinima, setMetaMinima] = useState("");
+  const [liderId, setLiderId] = useState("");
+  const [carregouId, setCarregouId] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const dados = configuracao.data;
+
+  // Preenche o formulário quando os dados do representante chegam.
+  if (dados && carregouId !== dados.id) {
+    setCarregouId(dados.id);
+    setNome(dados.nome);
+    setValorPremiacao(dados.valor_premiacao_contrato?.toString().replace(".", ",") ?? "");
+    setValorComissao(dados.valor_comissao_lideranca?.toString().replace(".", ",") ?? "");
+    setMetaMinima(dados.meta_minima_mensal?.toString() ?? "");
+    setLiderId(dados.lider_id ?? "");
+  }
+
+  const enviando =
+    atualizarCadastro.isPending || atualizarValores.isPending || definirLider.isPending;
+
+  function fechar() {
+    setCarregouId(null);
+    setErro(null);
+    atualizarCadastro.reset();
+    atualizarValores.reset();
+    definirLider.reset();
+    onClose();
+  }
+
+  async function enviar(event: FormEvent) {
+    event.preventDefault();
+    setErro(null);
+    if (!dados) return;
+    if (!nome.trim()) return setErro("Informe o nome do representante.");
+
+    const premiacao = valorParaNumero(valorPremiacao);
+    if (Number.isNaN(premiacao)) return setErro("Valor da premiação por contrato inválido.");
+    const comissao = valorParaNumero(valorComissao);
+    if (Number.isNaN(comissao)) return setErro("Valor da comissão de liderança inválido.");
+    const meta = metaMinima.trim() ? Number(metaMinima.trim()) : null;
+    if (meta !== null && (!Number.isInteger(meta) || meta <= 0))
+      return setErro("Meta mínima mensal deve ser um número inteiro maior que zero.");
+
+    try {
+      if (nome.trim() !== dados.nome) {
+        await atualizarCadastro.mutateAsync({
+          representanteId: dados.id,
+          nome,
+        });
+      }
+
+      await atualizarValores.mutateAsync({
+        representanteId: dados.id,
+        valorPremiacaoContrato: premiacao,
+        valorComissaoLideranca: comissao,
+        metaMinimaMensal: meta,
+      });
+
+      const liderAtual = dados.lider_id ?? "";
+      if (liderId !== liderAtual) {
+        await definirLider.mutateAsync({
+          representanteId: dados.id,
+          liderId: liderId || null,
+        });
+      }
+
+      fechar();
+    } catch (causa) {
+      setErro(causa instanceof Error ? causa.message : "Não foi possível salvar as alterações.");
+    }
+  }
+
+  return (
+    <Dialog
+      open={representanteId !== null}
+      title={dados ? `Editar representante — ${dados.codigo}` : "Editar representante"}
+      onClose={fechar}
+      footer={<Rodape onClose={fechar} enviando={enviando} rotulo="Salvar alterações" />}
+    >
+      {configuracao.isLoading ? (
+        <p className="text-sm">Carregando cadastro...</p>
+      ) : configuracao.isError ? (
+        <Alert tone="error" title="Não foi possível carregar o cadastro deste representante." />
+      ) : !dados ? (
+        <Alert tone="warning" title="Representante não encontrado." />
+      ) : (
+        <form id="w2k-form" onSubmit={enviar} className="flex flex-col gap-3">
+          {erro ? <Alert tone="error" title={erro} /> : null}
+          <Field label="Código (não pode ser alterado)">
+            <Input value={dados.codigo} readOnly />
+          </Field>
+          <Field label="Nome" htmlFor="edit-nome">
+            <Input
+              id="edit-nome"
+              value={nome}
+              onChange={(event) => setNome(event.target.value)}
+              required
+            />
+          </Field>
+          <Field label="Premiação por contrato (R$)" htmlFor="edit-premiacao">
+            <Input
+              id="edit-premiacao"
+              value={valorPremiacao}
+              onChange={(event) => setValorPremiacao(event.target.value)}
+              inputMode="decimal"
+              placeholder="deixe vazio se ainda não definido"
+            />
+          </Field>
+          <Field label="Meta mínima de contratos no mês" htmlFor="edit-meta">
+            <Input
+              id="edit-meta"
+              value={metaMinima}
+              onChange={(event) => setMetaMinima(event.target.value.replace(/\D/g, ""))}
+              inputMode="numeric"
+              placeholder="deixe vazio se ainda não definida"
+            />
+          </Field>
+          <Field label="Filiado ao líder" htmlFor="edit-lider">
+            <Select
+              id="edit-lider"
+              value={liderId}
+              onChange={(event) => setLiderId(event.target.value)}
+            >
+              <option value="">Nenhum — não pertence a uma equipe</option>
+              {possiveisLideres
+                .filter((lider) => lider.id !== dados.id)
+                .map((lider) => (
+                  <option key={lider.id} value={lider.id}>
+                    {lider.nome}
+                  </option>
+                ))}
+            </Select>
+          </Field>
+          <Field label="Comissão de liderança por contrato da equipe (R$)" htmlFor="edit-comissao">
+            <Input
+              id="edit-comissao"
+              value={valorComissao}
+              onChange={(event) => setValorComissao(event.target.value)}
+              inputMode="decimal"
+              placeholder="preencha apenas se este representante for líder"
+            />
+          </Field>
+          {dados.e_lider ? (
+            <Alert
+              tone="info"
+              title={`Este representante lidera ${dados.qtd_equipe} representante(s).`}
+            />
+          ) : null}
+        </form>
+      )}
     </Dialog>
   );
 }
