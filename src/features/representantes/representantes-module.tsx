@@ -319,6 +319,7 @@ export function RepresentantesModule({ supervisor }: { supervisor: SupervisorCon
         onClose={() => setDialogo(null)}
         supervisorId={supervisorId}
         supervisorLabel={supervisor.label}
+        possiveisLideres={carteiraAtual.data ?? []}
       />
       <DialogRegistrarProducao
         open={dialogo === "producao"}
