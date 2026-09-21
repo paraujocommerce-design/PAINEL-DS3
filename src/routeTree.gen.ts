@@ -14,6 +14,7 @@ import { Route as AcoesGerenciaisRouteImport } from './routes/acoes-gerenciais'
 import { Route as AlertasRouteImport } from './routes/alertas'
 import { Route as CertificadoDigitalRouteImport } from './routes/certificado-digital'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as ImportacaoRouteImport } from './routes/importacao'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PessoasRouteImport } from './routes/pessoas'
@@ -47,6 +48,11 @@ const CertificadoDigitalRoute = CertificadoDigitalRouteImport.update({
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContratosRoute = ContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImportacaoRoute = ImportacaoRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/alertas': typeof AlertasRoute
   '/certificado-digital': typeof CertificadoDigitalRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/contratos': typeof ContratosRoute
   '/importacao': typeof ImportacaoRoute
   '/login': typeof LoginRoute
   '/pessoas': typeof PessoasRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/alertas': typeof AlertasRoute
   '/certificado-digital': typeof CertificadoDigitalRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/contratos': typeof ContratosRoute
   '/importacao': typeof ImportacaoRoute
   '/login': typeof LoginRoute
   '/pessoas': typeof PessoasRoute
@@ -135,6 +143,7 @@ export interface FileRoutesById {
   '/alertas': typeof AlertasRoute
   '/certificado-digital': typeof CertificadoDigitalRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/contratos': typeof ContratosRoute
   '/importacao': typeof ImportacaoRoute
   '/login': typeof LoginRoute
   '/pessoas': typeof PessoasRoute
@@ -153,6 +162,7 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/certificado-digital'
     | '/configuracoes'
+    | '/contratos'
     | '/importacao'
     | '/login'
     | '/pessoas'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/certificado-digital'
     | '/configuracoes'
+    | '/contratos'
     | '/importacao'
     | '/login'
     | '/pessoas'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/alertas'
     | '/certificado-digital'
     | '/configuracoes'
+    | '/contratos'
     | '/importacao'
     | '/login'
     | '/pessoas'
@@ -202,6 +214,7 @@ export interface RootRouteChildren {
   AlertasRoute: typeof AlertasRoute
   CertificadoDigitalRoute: typeof CertificadoDigitalRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  ContratosRoute: typeof ContratosRoute
   ImportacaoRoute: typeof ImportacaoRoute
   LoginRoute: typeof LoginRoute
   PessoasRoute: typeof PessoasRoute
@@ -248,6 +261,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/configuracoes'
       preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contratos': {
+      id: '/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
+      preLoaderRoute: typeof ContratosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/importacao': {
@@ -322,6 +342,7 @@ const rootRouteChildren: RootRouteChildren = {
   AlertasRoute: AlertasRoute,
   CertificadoDigitalRoute: CertificadoDigitalRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  ContratosRoute: ContratosRoute,
   ImportacaoRoute: ImportacaoRoute,
   LoginRoute: LoginRoute,
   PessoasRoute: PessoasRoute,

@@ -36,6 +36,7 @@ export const NAV_GROUPS: NavGroup[] = [
           params: { supervisor: supervisor.slug },
         })),
       },
+      { label: "Contratos", to: "/contratos" },
       { label: "Prefeituras", to: "/prefeituras" },
       { label: "Vendas Internas", to: "/vendas-internas" },
       { label: "Certificado Digital", to: "/certificado-digital" },
