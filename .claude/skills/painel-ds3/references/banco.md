@@ -1,25 +1,32 @@
 # Mapa do banco
 
-Supabase/PostgreSQL. 12 migrations aplicadas (`db/migrations/0001` a `0012`).
+Supabase/PostgreSQL. 13 migrations aplicadas (`db/migrations/0001` a `0013`).
 Tudo com RLS ativa; escrita só por RPC `security definer`.
 
 ## Permissão
 
-Dois papéis no enum `app_role`: `admin` (gestor) e `operacao` (Mariucha).
+Três papéis no enum `app_role`: `admin` (Paulo, gestor), `operacao`
+(Mariucha) e `supervisao` (Berg).
 
-- `pode_operar(uuid)` — admin OU operação. É a checagem usada por quase todas
-  as RPCs e policies.
-- `has_role(uuid, app_role)` — checagem estrita de um papel exato.
-- `f_exigir_admin()` — barra quem não é admin. Só as funções de exclusão usam.
+- `pode_operar(uuid)` — admin OU operação. Checagem da maioria das RPCs.
+- `pode_ver_financeiro(uuid)` — admin, operação OU supervisão. Só leitura:
+  Berg enxerga a ordem que vai autorizar, mas não apura, não lança e não paga.
+- `f_tem_papel(uuid, text)` — um papel exato, comparado como texto.
+- `has_role(uuid, app_role)` / `f_exigir_admin()` — de migrations anteriores.
 
 A concessão de papel não passa pela aplicação: é `INSERT` manual em
-`user_roles` pelo SQL Editor.
+`user_roles` pelo SQL Editor, buscando o usuário por e-mail em `auth.users`
+(nunca colando UUID à mão).
+
+Contas reais: `paraujocommerce@gmail.com` admin,
+`suportecomercialds3@consultcenter.com.br` operação,
+`bergcalasans@consultcenter.com.br` supervisão.
 
 ## Representantes
 
 | Tabela | Papel |
 | --- | --- |
-| `representantes` | cadastro. `codigo` = 4 dígitos manuais e **imutável** (trigger). Guarda `valor_premiacao_contrato`, `valor_comissao_lideranca`, `meta_minima_mensal` — todos podem ser `NULL` = não cadastrado |
+| `representantes` | cadastro. `codigo` = 4 dígitos manuais e **imutável** (trigger). Guarda `valor_premiacao_contrato`, `valor_comissao_lideranca`, `meta_minima_mensal`, `valor_ajuda_custo_fixa` e os dados bancários — todos podem ser `NULL` = não cadastrado |
 | `supervisores` | Berg e Clênio. Não são usuários de login |
 | `representante_vinculos` | histórico representante → supervisor, sem sobreposição (EXCLUDE gist) |
 | `representante_liderancas` | histórico representante → líder. Hierarquia **distinta** do supervisor: é a que gera comissão |
@@ -31,7 +38,7 @@ A concessão de papel não passa pela aplicação: é `INSERT` manual em
 observação, guardando o valor anterior no histórico),
 `atualizar_valores_representante`, `mudar_supervisor`,
 `definir_lider_representante`, `encerrar_lideranca_representante`,
-`cancelar_producao`.
+`atualizar_dados_financeiros_representante`, `cancelar_producao`.
 
 **Views:** `v_representantes_carteira`, `v_representantes_configuracao`
 (valores + se é líder + tamanho da equipe), `v_representantes_lideranca_atual`,
@@ -68,24 +75,47 @@ cálculo**, não recalcule no front), `v_contratos_incompletos`.
 
 | Tabela | Papel |
 | --- | --- |
-| `representante_debitos` | dívida do representante |
+| `rubricas_pagamento` | as ~20 linhas do formulário real. Cada uma diz o `sinal` (+1 ou -1), se é `automatica`, se `gera_debito` e se `exige_contrato` |
+| `ordem_pagamento_autorizacoes` | uma linha por instância exigida: gerência, supervisão, auditoria, diretoria |
+| `representante_debitos` | dívida do representante. `origem_item_id` liga ao lançamento que a criou |
 | `representante_debito_abatimentos` | abatimento, ligado ao contrato que descontou |
 | `meta_plus_faixas` | 10 → R$ 500, 15 → R$ 1.000, 20 → R$ 2.000. `valor_total` é o TOTAL da faixa, não incremento |
 | `ordens_pagamento` | uma por representante por competência |
 | `ordem_pagamento_itens` | itens discriminados; `valor_liquido` é coluna gerada |
 
+`ordem_pagamento_itens.tipo` **é** o código da rubrica (FK), não uma lista
+paralela. `valor_liquido` é gerado como `sinal * (bruto - desconto)`, então
+abatimento e estorno de fato subtraem.
+
 **RPCs:** `apurar_ordem_pagamento(representante, competência)` — **a fonte
-única do cálculo**; `apurar_competencia(data)` apura todos de uma vez;
-`registrar_debito_representante`, `abater_debito_representante`,
-`fechar_ordem_pagamento`, `pagar_ordem_pagamento`, `cancelar_ordem_pagamento`,
-`adicionar_ajuste_ordem`.
+única do cálculo**, lança as rubricas automáticas e preserva as manuais;
+`apurar_competencia(data)` apura todos de uma vez;
+`adicionar_item_ordem` / `remover_item_ordem` (rubricas manuais);
+`exigir_autorizacao_ordem`, `remover_exigencia_autorizacao`,
+`decidir_autorizacao_ordem`; `definir_destinatario_ordem`,
+`limpar_destinatario_ordem`; `registrar_debito_representante`,
+`abater_debito_representante`; `fechar_ordem_pagamento`,
+`pagar_ordem_pagamento`, `reabrir_ordem_pagamento`,
+`cancelar_ordem_pagamento`, `adicionar_ajuste_ordem`.
+
+**Quem faz o quê:** operação apura, lança e fecha. Supervisão autoriza a
+instância dela. **Só admin paga**, reabre e dispensa exigência. Pagar exige
+todas as autorizações exigidas concedidas, e grava forma, data, valor e
+comprovante.
+
+**Trava de duplicidade:** o trigger `f_item_sem_duplicidade` recusa um
+segundo lançamento do mesmo contrato na mesma rubrica, em qualquer ordem não
+cancelada, nomeando a ordem anterior na mensagem.
 
 Reapurar uma ordem **aberta** recalcula sem duplicar e preserva itens do tipo
 `ajuste`. Ordem `fechada` ou `paga` recusa reapuração — é o que protege
 pagamento já feito.
 
-**Views:** `v_ordens_pagamento`, `v_representante_debitos`,
-`v_representante_saldo_devedor`.
+**Views:** `v_ordens_pagamento` (com supervisor, contagem de autorizações,
+`liberada_para_pagamento` e os dados bancários efetivos),
+`v_ordem_pagamento_linhas` (a ordem no formato do formulário),
+`v_financeiro_representante` (apurado × pago × saldo devedor),
+`v_representante_debitos`, `v_representante_saldo_devedor`.
 
 ## Importação
 

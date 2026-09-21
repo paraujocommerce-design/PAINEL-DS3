@@ -68,8 +68,59 @@ Vale para premiação do representante **e** para comissão do líder.
 
 ## Ordem de pagamento
 
-Documento interno, um por representante por competência (mês). Os itens são
-discriminados: código do contrato do cliente, tipo de ganho, valor e desconto.
+Documento interno, um por representante por competência (mês), no formato do
+formulário que a DS3 já usava no papel (modelo "BERG CALASANS — 3840 CLAUDIO
+CARDOSO"): cabeçalho com supervisor e representante, ~20 rubricas nomeadas,
+cada linha com data, valor e observação, e a conta de destino no rodapé.
+
+### Vocabulário — o nome da tela é o do formulário
+
+| Rubrica no formulário | O que é no sistema |
+| --- | --- |
+| Ajuda de custo por contrato | **é a premiação por contrato** — uma linha por contrato, com o código |
+| Pagamento por equipe | comissão de liderança |
+| Pagamento incentivo | incentivo comercial de 10% |
+| Ajuda de custo fixa | valor fixo mensal do cadastro do representante |
+
+As quatro acima são **automáticas** — a apuração as lança. As demais
+(combustível, acordo, carro, adesão boleto, diferença, participação de
+representante, 1ª mensalidade, reativação, adiantamento, abatimento, estorno)
+são lançadas à mão.
+
+### Ajuda de custo × adiantamento — parecem iguais e são opostos
+
+Os dois saem dinheiro na hora. O **adiantamento vira dívida** a descontar nas
+próximas vendas; a **ajuda de custo é gratificação e não volta** (conserto de
+carro, viagem, o que for). Cada rubrica carrega a marca `gera_debito`, e é ela
+que decide. Errar isso significa cobrar de volta uma gratificação.
+
+### Duplicidade — exigência explícita do gestor
+
+A linha precisa conter o código do contrato que está sendo pago. Um contrato
+só pode ser pago uma vez por rubrica, e **o banco recusa** a segunda tentativa
+nomeando a ordem anterior. A conferência não depende de alguém lembrar.
+
+### Autorização antes do pagamento
+
+Quatro instâncias possíveis, exigidas caso a caso — nem toda ordem precisa das
+quatro: **gerência** (Paulo), **supervisão** (Berg), **auditoria** (Durval),
+**diretoria** (Kennedy).
+
+Berg tem login e autoriza por si. Durval e Kennedy não usam o sistema: a
+gerência registra a decisão deles, e o banco guarda separado *quem autorizou*
+de *quem digitou*. Operação não registra autorização de terceiro.
+
+Quem monta a ordem não a paga: operação apura e fecha, **só a gerência paga**,
+e o pagamento fica bloqueado enquanto faltar qualquer autorização exigida.
+Pagar grava forma, data, valor e comprovante.
+
+Reabrir uma ordem fechada **invalida todas as autorizações** — o documento
+mudou, aprovar de novo é o certo.
+
+### Destinatário do pagamento
+
+Por padrão vai para a conta cadastrada do representante. A conta só é
+informada na ordem **quando o destinatário muda**, e a mudança exige motivo.
 
 `apurar_ordem_pagamento` é a **fonte única do cálculo**. Nunca recalcule
 premiação, Meta Plus ou incentivo no frontend ou numa segunda função — se o

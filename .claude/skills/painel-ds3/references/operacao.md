@@ -38,6 +38,23 @@ conflito. Já aconteceu: horas de código sumiram e só apareceram quando reli o
 arquivo. Depois do merge, confira que o código realmente está lá antes de dar
 por feito.
 
+## Testar a migration antes de entregar
+
+Há PostgreSQL 16 no ambiente (`/usr/lib/postgresql/16/bin`). Dá para rodar
+todas as migrations do zero e exercitar as regras antes de o gestor colar no
+Supabase — o que já evitou pelo menos um erro caro.
+
+O `initdb` recusa rodar como root e o diretório de scratchpad não tem
+permissão para o usuário `postgres`; use um diretório sob
+`/var/lib/postgresql` e rode via `su postgres -c`.
+
+Falta o que o Supabase fornece, então antes das migrations aplique um prelúdio
+criando: os papéis `anon`, `authenticated`, `service_role`; as extensões
+`btree_gist` e `pgcrypto`; o schema `auth` com a tabela `auth.users`; e uma
+`auth.uid()` que leia uma variável de sessão — assim dá para simular cada
+perfil com `set test.user_id = '...'` e provar que o que deve ser recusado é
+recusado.
+
 ## Regras de migration
 
 Numeração sequencial, aplicada em ordem, uma de cada vez. **Nunca altere uma
