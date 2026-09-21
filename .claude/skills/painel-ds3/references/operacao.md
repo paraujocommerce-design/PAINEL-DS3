@@ -55,6 +55,21 @@ criando: os papéis `anon`, `authenticated`, `service_role`; as extensões
 perfil com `set test.user_id = '...'` e provar que o que deve ser recusado é
 recusado.
 
+## Conferir visualmente o que foi desenhado
+
+Quando a entrega é uma imagem ou uma folha que precisa ficar igual a um
+modelo, dá para olhar antes de entregar: há Chromium em
+`/opt/pw-browsers/chromium-*/chrome-linux/chrome`.
+
+O caminho: `bun build` do módulo de desenho, embutir o bundle na página com
+`<script>` comum (Chromium bloqueia `import` por `file://`, então um
+`type="module"` apontando para outro arquivo não carrega), abrir com
+`playwright-core` e tirar screenshot do canvas. O script precisa rodar de
+dentro do projeto para achar `node_modules`.
+
+`playwright-core` entra só para isso e **sai com `bun remove` depois** — não
+deve ficar no `package.json`, senão a Vercel instala à toa.
+
 ## Regras de migration
 
 Numeração sequencial, aplicada em ordem, uma de cada vez. **Nunca altere uma

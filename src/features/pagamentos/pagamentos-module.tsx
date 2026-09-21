@@ -17,6 +17,7 @@ import {
 import type { Column } from "@/components/w2k";
 import { useApurarCompetencia, useDebitos, useOrdensPagamento, type OrdemPagamento } from "./api";
 import { OrdemDetalhe } from "./ordem-detalhe";
+import { OrdemImagem } from "./ordem-imagem";
 import { RelatorioPagamento } from "./relatorio";
 
 const COLUNAS_ORDENS: Column[] = [
@@ -71,6 +72,7 @@ export function PagamentosModule() {
   const [aba, setAba] = useState("ordens");
   const [ordemAbertaId, setOrdemAbertaId] = useState<string | null>(null);
   const [verRelatorio, setVerRelatorio] = useState(false);
+  const [verImagem, setVerImagem] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -112,6 +114,14 @@ export function PagamentosModule() {
     }
   }
 
+  if (ordemAberta && verImagem) {
+    return (
+      <Window title="Pagamentos — ordem em imagem" className="h-full">
+        <OrdemImagem ordem={ordemAberta} onVoltar={() => setVerImagem(false)} />
+      </Window>
+    );
+  }
+
   if (ordemAberta && verRelatorio) {
     return (
       <Window title="Pagamentos — relatório do representante" className="h-full">
@@ -127,6 +137,7 @@ export function PagamentosModule() {
           ordem={ordemAberta}
           onVoltar={() => setOrdemAbertaId(null)}
           onRelatorio={() => setVerRelatorio(true)}
+          onImagem={() => setVerImagem(true)}
         />
       </Window>
     );

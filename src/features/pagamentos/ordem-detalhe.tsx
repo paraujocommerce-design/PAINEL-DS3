@@ -506,10 +506,12 @@ export function OrdemDetalhe({
   ordem,
   onVoltar,
   onRelatorio,
+  onImagem,
 }: {
   ordem: OrdemPagamento;
   onVoltar: () => void;
   onRelatorio: () => void;
+  onImagem: () => void;
 }) {
   const { ehAdmin } = usePapelUsuario();
   const linhas = useLinhasOrdem(ordem.id);
@@ -577,6 +579,7 @@ export function OrdemDetalhe({
       <Toolbar>
         <ClassicButton onClick={onVoltar}>← Voltar</ClassicButton>
         <ToolbarSeparator />
+        <ClassicButton onClick={onImagem}>Imagem da ordem</ClassicButton>
         <ClassicButton onClick={onRelatorio}>Relatório do representante</ClassicButton>
         <ToolbarSeparator />
         {aberta ? (

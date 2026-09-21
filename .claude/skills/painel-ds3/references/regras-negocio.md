@@ -147,7 +147,20 @@ representante recebe um total menor sem saber por quê.
 Ordem que ainda não foi paga sai marcada como **prévia** — os valores não são
 definitivos até o pagamento.
 
-PDF sai pelo diálogo de impressão do navegador. Não há biblioteca de PDF no
+## Ordem em imagem
+
+Além do relatório, a ordem sai como **PNG no formato do formulário impresso**
+— toda rubrica na tela, mesmo vazia, cores iguais às do papel (adiantamento
+azul, abatimento e estorno vermelhos) e as duas contas no rodapé.
+
+Desenhada em canvas puro em `ordem-desenho.ts`. Não use biblioteca de "HTML
+para imagem": as cores do Tailwind 4 são `oklch` e essas bibliotecas não as
+leem, devolvendo a folha errada.
+
+Uma diferença do papel: lá havia linhas em branco de reserva para escrever à
+mão; aqui a rubrica com vários lançamentos rende várias linhas.
+
+PDF do relatório sai pelo diálogo de impressão do navegador. Não há biblioteca de PDF no
 projeto e não vale acrescentar uma para fazer o que o navegador já faz.
 
 ## Contratos — o que o lançamento precisa
