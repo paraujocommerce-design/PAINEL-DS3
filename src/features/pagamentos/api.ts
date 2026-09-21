@@ -24,6 +24,7 @@ export type OrdemPagamento = {
   representante_nome: string;
   supervisor_nome: string | null;
   competencia: string;
+  data_ordem: string;
   status: StatusOrdem;
   total_bruto: number;
   total_desconto: number;
@@ -151,6 +152,7 @@ export function useOrdensPagamento(competencia: string) {
         representante_nome: String(linha["representante_nome"]),
         supervisor_nome: texto(linha["supervisor_nome"]),
         competencia: String(linha["competencia"]),
+        data_ordem: String(linha["data_ordem"]),
         status: linha["status"] as StatusOrdem,
         total_bruto: numero(linha["total_bruto"]),
         total_desconto: numero(linha["total_desconto"]),
@@ -345,12 +347,103 @@ function useInvalidar() {
   return () => queryClient.invalidateQueries({ queryKey: ["pagamentos"] });
 }
 
-export function useApurarCompetencia() {
+/** Uma linha do que ainda pode ser pago a este representante. */
+export type PagamentoDisponivel = {
+  rubrica: string;
+  rotulo: string;
+  contrato_id: string | null;
+  codigo_contrato: string | null;
+  descricao: string;
+  data_referencia: string | null;
+  valor: number;
+};
+
+export type RepresentanteOpcao = { id: string; codigo: string; nome: string };
+
+export function useRepresentantes() {
+  return useQuery({
+    queryKey: ["pagamentos", "representantes"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<RepresentanteOpcao[]> => {
+      const { data, error } = await cliente()
+        .from("representantes")
+        .select("id, codigo, nome")
+        .order("nome");
+      if (error) throw new Error(error.message);
+      return ((data ?? []) as Record<string, unknown>[]).map((l) => ({
+        id: String(l["id"]),
+        codigo: String(l["codigo"]),
+        nome: String(l["nome"]),
+      }));
+    },
+  });
+}
+
+export function usePagamentosDisponiveis(representanteId?: string, data?: string) {
+  return useQuery({
+    queryKey: ["pagamentos", "disponiveis", representanteId ?? "", data ?? ""],
+    enabled: Boolean(representanteId),
+    queryFn: async (): Promise<PagamentoDisponivel[]> => {
+      const { data: linhas, error } = await cliente().rpc("pagamentos_disponiveis", {
+        p_representante_id: representanteId!,
+        p_data: data ?? new Date().toISOString().slice(0, 10),
+      });
+      if (error) throw new Error(error.message);
+      return ((linhas ?? []) as Record<string, unknown>[]).map((l) => ({
+        rubrica: String(l["rubrica"]),
+        rotulo: String(l["rotulo"]),
+        contrato_id: texto(l["contrato_id"]),
+        codigo_contrato: texto(l["codigo_contrato"]),
+        descricao: String(l["descricao"]),
+        data_referencia: texto(l["data_referencia"]),
+        valor: numero(l["valor"]),
+      }));
+    },
+  });
+}
+
+export function useCriarOrdem() {
   const invalidar = useInvalidar();
   return useMutation({
-    mutationFn: async (competencia: string): Promise<number> => {
-      const { data, error } = await cliente().rpc("apurar_competencia", {
-        p_competencia: `${competencia}-01`,
+    mutationFn: async (entrada: { representanteId: string; data: string }): Promise<string> => {
+      const { data, error } = await cliente().rpc("criar_ordem_pagamento", {
+        p_representante_id: entrada.representanteId,
+        p_data: entrada.data,
+      });
+      if (error) throw new Error(error.message);
+      return String(data);
+    },
+    onSuccess: () => void invalidar(),
+  });
+}
+
+export function useIncluirContratos() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: async (entrada: {
+      ordemId: string;
+      rubrica: string;
+      contratoIds: string[];
+    }): Promise<number> => {
+      const { data, error } = await cliente().rpc("incluir_contratos_na_ordem", {
+        p_ordem_id: entrada.ordemId,
+        p_rubrica: entrada.rubrica,
+        p_contrato_ids: entrada.contratoIds,
+      });
+      if (error) throw new Error(error.message);
+      return Number(data ?? 0);
+    },
+    onSuccess: () => void invalidar(),
+  });
+}
+
+export function useIncluirRubricaMensal() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: async (entrada: { ordemId: string; rubrica: string }): Promise<number> => {
+      const { data, error } = await cliente().rpc("incluir_rubrica_mensal_na_ordem", {
+        p_ordem_id: entrada.ordemId,
+        p_rubrica: entrada.rubrica,
       });
       if (error) throw new Error(error.message);
       return Number(data ?? 0);

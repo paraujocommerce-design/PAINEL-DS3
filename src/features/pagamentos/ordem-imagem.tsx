@@ -71,6 +71,19 @@ export function OrdemImagem({ ordem, onVoltar }: { ordem: OrdemPagamento; onVolt
       }
     }
 
+    // Rede de segurança: uma linha cuja rubrica foi desativada continua na
+    // folha. Some da lista de lançamento, mas não pode sumir do documento.
+    const ativas = new Set(rubricas.data.map((r) => r.codigo));
+    for (const linha of linhas.data.filter((l) => !ativas.has(l.rubrica))) {
+      montadas.push({
+        rotulo: linha.rotulo.toUpperCase(),
+        data: data(linha.data_referencia),
+        valor: moeda(linha.valor_liquido),
+        observacao: linha.observacao ?? "",
+        cor: linha.valor_liquido < 0 ? "negativo" : "normal",
+      });
+    }
+
     const conta = [
       ordem.banco_efetivo ? `${ordem.banco_efetivo} AG: ${ordem.agencia_efetiva ?? "—"}` : "",
       ordem.conta_efetiva ? `C.C: ${ordem.conta_efetiva}` : "",

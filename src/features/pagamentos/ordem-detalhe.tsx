@@ -30,6 +30,9 @@ import {
   useRemoverExigencia,
   useRemoverItem,
   useRubricas,
+  useIncluirContratos,
+  useIncluirRubricaMensal,
+  usePagamentosDisponiveis,
   type InstanciaAutorizacao,
   type OrdemPagamento,
 } from "./api";
@@ -501,6 +504,162 @@ function DialogPagar({
   );
 }
 
+const RUBRICAS_MENSAIS = ["meta_plus", "pagamento_incentivo", "ajuda_custo_fixa"];
+
+/**
+ * Escolha do que a ordem paga.
+ *
+ * A ordem não nasce com tudo dentro: o dia a dia paga contratos, e as
+ * rubricas mensais (Meta Plus, incentivo, ajuda fixa) entram quando o gestor
+ * liberar. O Meta Plus aparece assim que a faixa é batida, mesmo no meio do
+ * mês, e já descontando o que foi pago nas faixas anteriores.
+ */
+function DialogIncluirDisponiveis({
+  ordem,
+  aberto,
+  onFechar,
+  onErro,
+}: {
+  ordem: OrdemPagamento;
+  aberto: boolean;
+  onFechar: () => void;
+  onErro: (erro: string) => void;
+}) {
+  const disponiveis = usePagamentosDisponiveis(ordem.representante_id, ordem.data_ordem);
+  const incluirContratos = useIncluirContratos();
+  const incluirMensal = useIncluirRubricaMensal();
+  const [marcados, setMarcados] = useState<string[]>([]);
+
+  const lista = disponiveis.data ?? [];
+  const contratos = lista.filter((d) => d.contrato_id !== null);
+  const mensais = lista.filter((d) => RUBRICAS_MENSAIS.includes(d.rubrica));
+
+  function chave(indice: number): string {
+    const item = lista[indice];
+    return item?.contrato_id ?? item?.rubrica ?? String(indice);
+  }
+
+  function alternar(id: string) {
+    setMarcados((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
+  }
+
+  async function incluir() {
+    const escolhidos = lista.filter((_, i) => marcados.includes(chave(i)));
+    if (escolhidos.length === 0) return onErro("Marque o que deve entrar na ordem.");
+    try {
+      for (const rubrica of ["ajuda_custo_contrato", "pagamento_equipe"]) {
+        const ids = escolhidos
+          .filter((e) => e.rubrica === rubrica && e.contrato_id)
+          .map((e) => e.contrato_id!);
+        if (ids.length > 0) {
+          await incluirContratos.mutateAsync({ ordemId: ordem.id, rubrica, contratoIds: ids });
+        }
+      }
+      for (const item of escolhidos.filter((e) => RUBRICAS_MENSAIS.includes(e.rubrica))) {
+        await incluirMensal.mutateAsync({ ordemId: ordem.id, rubrica: item.rubrica });
+      }
+      setMarcados([]);
+      onFechar();
+    } catch (causa) {
+      onErro(mensagem(causa, "Não foi possível incluir."));
+    }
+  }
+
+  const ocupado = incluirContratos.isPending || incluirMensal.isPending;
+
+  return (
+    <Dialog
+      open={aberto}
+      title="Incluir pagamentos nesta ordem"
+      onClose={onFechar}
+      footer={
+        <>
+          <ClassicButton onClick={onFechar}>Fechar</ClassicButton>
+          <ClassicButton variant="primary" onClick={() => void incluir()} disabled={ocupado}>
+            {ocupado ? "Incluindo..." : "Incluir marcados"}
+          </ClassicButton>
+        </>
+      }
+    >
+      {disponiveis.isLoading ? (
+        <LoadingState />
+      ) : lista.length === 0 ? (
+        <EmptyState
+          title="Nada pendente para este representante."
+          description="Todos os contratos já foram pagos e as rubricas mensais já saíram."
+        />
+      ) : (
+        <div className="flex max-h-[60vh] flex-col gap-3 overflow-auto">
+          {mensais.length > 0 ? (
+            <div>
+              <p className="mb-1 font-bold">Uma vez no mês</p>
+              {mensais.map((item) => {
+                const indice = lista.indexOf(item);
+                return (
+                  <label key={item.rubrica} className="flex items-start gap-1 py-[2px]">
+                    <input
+                      type="checkbox"
+                      checked={marcados.includes(chave(indice))}
+                      onChange={() => alternar(chave(indice))}
+                    />
+                    <span>
+                      <strong>{item.rotulo}</strong> — {moeda(item.valor)}
+                      <span className="block text-xs text-muted-foreground">{item.descricao}</span>
+                      {item.rubrica === "pagamento_incentivo" ? (
+                        <span className="block text-xs text-muted-foreground">
+                          Costuma ser pago até o 10º dia útil — inclua quando for a hora.
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {contratos.length > 0 ? (
+            <div>
+              <p className="mb-1 flex items-center justify-between font-bold">
+                <span>Contratos a pagar ({contratos.length})</span>
+                <ClassicButton
+                  onClick={() =>
+                    setMarcados((atual) => {
+                      const ids = contratos.map((c) => c.contrato_id!);
+                      return ids.every((id) => atual.includes(id))
+                        ? atual.filter((x) => !ids.includes(x))
+                        : [...new Set([...atual, ...ids])];
+                    })
+                  }
+                >
+                  Marcar todos
+                </ClassicButton>
+              </p>
+              {contratos.map((item) => {
+                const indice = lista.indexOf(item);
+                return (
+                  <label key={item.contrato_id} className="flex items-start gap-1 py-[2px]">
+                    <input
+                      type="checkbox"
+                      checked={marcados.includes(chave(indice))}
+                      onChange={() => alternar(chave(indice))}
+                    />
+                    <span>
+                      {item.descricao} — {moeda(item.valor)}
+                      <span className="block text-xs text-muted-foreground">
+                        {item.rotulo} · {formatarData(item.data_referencia)}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </Dialog>
+  );
+}
+
 /** A ordem aberta como documento, no formato do formulário da DS3. */
 export function OrdemDetalhe({
   ordem,
@@ -524,7 +683,7 @@ export function OrdemDetalhe({
 
   const [erro, setErro] = useState<string | null>(null);
   const [dialogo, setDialogo] = useState<
-    "rubrica" | "destinatario" | "autorizacao" | "pagar" | null
+    "incluir" | "rubrica" | "destinatario" | "autorizacao" | "pagar" | null
   >(null);
 
   const aberta = ordem.status === "aberta";
@@ -584,15 +743,16 @@ export function OrdemDetalhe({
         <ToolbarSeparator />
         {aberta ? (
           <>
+            <ClassicButton variant="primary" onClick={() => setDialogo("incluir")}>
+              Incluir pagamentos
+            </ClassicButton>
             <ClassicButton onClick={() => setDialogo("rubrica")}>Lançar rubrica</ClassicButton>
             <ClassicButton onClick={() => setDialogo("destinatario")}>Destinatário</ClassicButton>
             <ClassicButton onClick={() => setDialogo("autorizacao")}>
               Exigir autorização
             </ClassicButton>
             <ToolbarSeparator />
-            <ClassicButton variant="primary" onClick={() => void executar("fechar")}>
-              Fechar ordem
-            </ClassicButton>
+            <ClassicButton onClick={() => void executar("fechar")}>Fechar ordem</ClassicButton>
           </>
         ) : null}
         {ordem.status === "fechada" ? (
@@ -672,7 +832,7 @@ export function OrdemDetalhe({
       ) : (linhas.data ?? []).length === 0 ? (
         <EmptyState
           title="Nenhuma linha nesta ordem."
-          description="Apure a competência para gerar as linhas automáticas, ou lance uma rubrica à mão."
+          description="Use 'Incluir pagamentos' para escolher os contratos e as rubricas mensais que entram."
         />
       ) : (
         <Table
@@ -766,6 +926,12 @@ export function OrdemDetalhe({
         )}
       </Panel>
 
+      <DialogIncluirDisponiveis
+        ordem={ordem}
+        aberto={dialogo === "incluir"}
+        onFechar={() => setDialogo(null)}
+        onErro={setErro}
+      />
       <DialogLancarRubrica
         ordem={ordem}
         aberto={dialogo === "rubrica"}

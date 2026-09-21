@@ -2,12 +2,14 @@ import { useMemo, useState } from "react";
 import {
   Alert,
   ClassicButton,
+  Dialog,
   EmptyState,
   Field,
   IndicatorSlot,
   Input,
   LoadingState,
   Panel,
+  Select,
   Table,
   Tabs,
   Toolbar,
@@ -15,12 +17,19 @@ import {
   Window,
 } from "@/components/w2k";
 import type { Column } from "@/components/w2k";
-import { useApurarCompetencia, useDebitos, useOrdensPagamento, type OrdemPagamento } from "./api";
+import {
+  useCriarOrdem,
+  useDebitos,
+  useOrdensPagamento,
+  useRepresentantes,
+  type OrdemPagamento,
+} from "./api";
 import { OrdemDetalhe } from "./ordem-detalhe";
 import { OrdemImagem } from "./ordem-imagem";
 import { RelatorioPagamento } from "./relatorio";
 
 const COLUNAS_ORDENS: Column[] = [
+  { key: "dia", label: "Dia" },
   { key: "representante", label: "Representante" },
   { key: "supervisor", label: "Supervisor" },
   { key: "itens", label: "Linhas", align: "right" },
@@ -67,6 +76,71 @@ function resumoAutorizacoes(ordem: OrdemPagamento): string {
   return `${ordem.autorizacoes_concedidas} de ${ordem.autorizacoes_exigidas}`;
 }
 
+function hoje(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Abre uma ordem vazia. O que ela paga é escolhido depois, item a item. */
+function DialogNovaOrdem({
+  aberto,
+  onFechar,
+  onCriada,
+  onErro,
+}: {
+  aberto: boolean;
+  onFechar: () => void;
+  onCriada: (ordemId: string) => void;
+  onErro: (erro: string) => void;
+}) {
+  const representantes = useRepresentantes();
+  const criar = useCriarOrdem();
+  const [representanteId, setRepresentanteId] = useState("");
+  const [data, setData] = useState(hoje);
+
+  async function abrir() {
+    if (!representanteId) return onErro("Escolha o representante.");
+    try {
+      const id = await criar.mutateAsync({ representanteId, data });
+      setRepresentanteId("");
+      onCriada(id);
+    } catch (causa) {
+      onErro(causa instanceof Error ? causa.message : "Não foi possível abrir a ordem.");
+    }
+  }
+
+  return (
+    <Dialog
+      open={aberto}
+      title="Nova ordem de pagamento"
+      onClose={onFechar}
+      footer={
+        <>
+          <ClassicButton onClick={onFechar}>Cancelar</ClassicButton>
+          <ClassicButton variant="primary" onClick={() => void abrir()} disabled={criar.isPending}>
+            {criar.isPending ? "Abrindo..." : "Abrir ordem"}
+          </ClassicButton>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        <Field label="Representante">
+          <Select value={representanteId} onChange={(e) => setRepresentanteId(e.target.value)}>
+            <option value="">Escolha...</option>
+            {(representantes.data ?? []).map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.codigo} — {r.nome}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Dia da ordem" hint="As ordens são diárias, conforme a demanda.">
+          <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+        </Field>
+      </div>
+    </Dialog>
+  );
+}
+
 export function PagamentosModule() {
   const [competencia, setCompetencia] = useState(periodoAtual);
   const [aba, setAba] = useState("ordens");
@@ -76,9 +150,9 @@ export function PagamentosModule() {
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
+  const [novaOrdem, setNovaOrdem] = useState(false);
   const ordens = useOrdensPagamento(competencia);
   const debitos = useDebitos();
-  const apurar = useApurarCompetencia();
 
   // A ordem aberta vem sempre da lista recarregada, para a tela refletir
   // o estado de agora e não uma cópia congelada no clique.
@@ -98,21 +172,6 @@ export function PagamentosModule() {
       aguardando: lista.filter((o) => o.status === "fechada" && !o.liberada_para_pagamento).length,
     };
   }, [ordens.data]);
-
-  async function apurarAgora() {
-    setErro(null);
-    setAviso(null);
-    try {
-      const qtd = await apurar.mutateAsync(competencia);
-      setAviso(
-        qtd === 0
-          ? "Nenhum representante com movimento nesta competência."
-          : `${qtd} ordem(ns) apurada(s).`,
-      );
-    } catch (causa) {
-      setErro(causa instanceof Error ? causa.message : "Não foi possível apurar.");
-    }
-  }
 
   if (ordemAberta && verImagem) {
     return (
@@ -156,12 +215,24 @@ export function PagamentosModule() {
         <ToolbarSeparator />
         <ClassicButton
           variant="primary"
-          onClick={() => void apurarAgora()}
-          disabled={apurar.isPending}
+          onClick={() => {
+            setErro(null);
+            setNovaOrdem(true);
+          }}
         >
-          {apurar.isPending ? "Apurando..." : "Apurar competência"}
+          Nova ordem
         </ClassicButton>
       </Toolbar>
+
+      <DialogNovaOrdem
+        aberto={novaOrdem}
+        onFechar={() => setNovaOrdem(false)}
+        onCriada={(id) => {
+          setNovaOrdem(false);
+          setOrdemAbertaId(id);
+        }}
+        onErro={setErro}
+      />
 
       {erro ? (
         <div className="my-2">
@@ -208,13 +279,14 @@ export function PagamentosModule() {
             {(ordens.data ?? []).length === 0 ? (
               <EmptyState
                 title="Nenhuma ordem nesta competência."
-                description="Use 'Apurar competência' para gerar as ordens a partir dos contratos lançados."
+                description="Use 'Nova ordem' para abrir uma e escolher o que ela paga."
               />
             ) : (
               <Table
                 columns={COLUNAS_ORDENS}
                 caption={`Ordens — ${competencia}`}
                 rows={(ordens.data ?? []).map((ordem) => ({
+                  dia: formatarData(ordem.data_ordem),
                   representante: `${ordem.representante_codigo} — ${ordem.representante_nome}`,
                   supervisor: ordem.supervisor_nome ?? "—",
                   itens: ordem.itens,
