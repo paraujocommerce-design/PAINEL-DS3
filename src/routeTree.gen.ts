@@ -17,6 +17,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as ImportacaoRouteImport } from './routes/importacao'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PagamentosRouteImport } from './routes/pagamentos'
 import { Route as PessoasRouteImport } from './routes/pessoas'
 import { Route as PrefeiturasRouteImport } from './routes/prefeituras'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
@@ -65,6 +66,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PagamentosRoute = PagamentosRouteImport.update({
+  id: '/pagamentos',
+  path: '/pagamentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PessoasRoute = PessoasRouteImport.update({
   id: '/pessoas',
   path: '/pessoas',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/contratos': typeof ContratosRoute
   '/importacao': typeof ImportacaoRoute
   '/login': typeof LoginRoute
+  '/pagamentos': typeof PagamentosRoute
   '/pessoas': typeof PessoasRoute
   '/prefeituras': typeof PrefeiturasRoute
   '/relatorios': typeof RelatoriosRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/contratos': typeof ContratosRoute
   '/importacao': typeof ImportacaoRoute
   '/login': typeof LoginRoute
+  '/pagamentos': typeof PagamentosRoute
   '/pessoas': typeof PessoasRoute
   '/prefeituras': typeof PrefeiturasRoute
   '/relatorios': typeof RelatoriosRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/contratos': typeof ContratosRoute
   '/importacao': typeof ImportacaoRoute
   '/login': typeof LoginRoute
+  '/pagamentos': typeof PagamentosRoute
   '/pessoas': typeof PessoasRoute
   '/prefeituras': typeof PrefeiturasRoute
   '/relatorios': typeof RelatoriosRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/contratos'
     | '/importacao'
     | '/login'
+    | '/pagamentos'
     | '/pessoas'
     | '/prefeituras'
     | '/relatorios'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/contratos'
     | '/importacao'
     | '/login'
+    | '/pagamentos'
     | '/pessoas'
     | '/prefeituras'
     | '/relatorios'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/contratos'
     | '/importacao'
     | '/login'
+    | '/pagamentos'
     | '/pessoas'
     | '/prefeituras'
     | '/relatorios'
@@ -217,6 +229,7 @@ export interface RootRouteChildren {
   ContratosRoute: typeof ContratosRoute
   ImportacaoRoute: typeof ImportacaoRoute
   LoginRoute: typeof LoginRoute
+  PagamentosRoute: typeof PagamentosRoute
   PessoasRoute: typeof PessoasRoute
   PrefeiturasRoute: typeof PrefeiturasRoute
   RelatoriosRoute: typeof RelatoriosRoute
@@ -284,6 +297,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pagamentos': {
+      id: '/pagamentos'
+      path: '/pagamentos'
+      fullPath: '/pagamentos'
+      preLoaderRoute: typeof PagamentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pessoas': {
       id: '/pessoas'
       path: '/pessoas'
@@ -345,6 +365,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContratosRoute: ContratosRoute,
   ImportacaoRoute: ImportacaoRoute,
   LoginRoute: LoginRoute,
+  PagamentosRoute: PagamentosRoute,
   PessoasRoute: PessoasRoute,
   PrefeiturasRoute: PrefeiturasRoute,
   RelatoriosRoute: RelatoriosRoute,

@@ -37,6 +37,7 @@ export const NAV_GROUPS: NavGroup[] = [
         })),
       },
       { label: "Contratos", to: "/contratos" },
+      { label: "Pagamentos", to: "/pagamentos" },
       { label: "Prefeituras", to: "/prefeituras" },
       { label: "Vendas Internas", to: "/vendas-internas" },
       { label: "Certificado Digital", to: "/certificado-digital" },
