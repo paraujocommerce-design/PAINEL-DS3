@@ -131,13 +131,24 @@ mediante motivo. Reapurar uma ordem aberta recalcula sem duplicar e preserva
 os itens do tipo `ajuste` (lançados à mão). Ordem fechada ou paga **recusa**
 reapuração — é o que protege pagamento já feito.
 
-## Relatório de pagamento — **ainda não construído**
+## Relatório de pagamento
 
-Especificado, não implementado. Um relatório por representante. Quando ele é
-líder, o relatório oferece escolha:
+A ordem é documento **interno**; o relatório é o que vai para o representante
+conferir. Um por representante, por competência.
 
-- **equipe inteira** — quantidades e valores que o líder recebeu por toda a equipe;
-- **parcial** — só um ou alguns representantes selecionados.
+Estrutura: valores próprios (rubrica, contrato, data, valor) com subtotal;
+bloco da equipe quando ele é líder, com um membro por linha — quantidade de
+contratos, os códigos e o valor; total a receber; saldo devedor em aberto.
+
+Quando é líder, escolhe-se **equipe inteira** ou **parcial** (um ou alguns
+membros). No parcial, o documento declara isso no cabeçalho: sem essa frase o
+representante recebe um total menor sem saber por quê.
+
+Ordem que ainda não foi paga sai marcada como **prévia** — os valores não são
+definitivos até o pagamento.
+
+PDF sai pelo diálogo de impressão do navegador. Não há biblioteca de PDF no
+projeto e não vale acrescentar uma para fazer o que o navegador já faz.
 
 ## Contratos — o que o lançamento precisa
 

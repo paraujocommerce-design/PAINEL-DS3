@@ -1,6 +1,6 @@
 # Mapa do banco
 
-Supabase/PostgreSQL. 13 migrations aplicadas (`db/migrations/0001` a `0013`).
+Supabase/PostgreSQL. 14 migrations aplicadas (`db/migrations/0001` a `0014`).
 Tudo com RLS ativa; escrita só por RPC `security definer`.
 
 ## Permissão
@@ -115,7 +115,15 @@ pagamento já feito.
 `liberada_para_pagamento` e os dados bancários efetivos),
 `v_ordem_pagamento_linhas` (a ordem no formato do formulário),
 `v_financeiro_representante` (apurado × pago × saldo devedor),
+`v_relatorio_pagamento` (as linhas com a **origem** do valor identificada —
+na comissão de liderança o valor é do líder mas o contrato é de quem vendeu;
+é o que permite quebrar o relatório do líder por membro da equipe),
 `v_representante_debitos`, `v_representante_saldo_devedor`.
+
+Atenção ao campo `referencia` de `ordem_pagamento_itens`: na linha de
+incentivo ele guarda o **valor da carteira**, não um código de contrato. Use
+`v_relatorio_pagamento.codigo_contrato`, que só vem preenchido quando há
+contrato de verdade.
 
 ## Importação
 

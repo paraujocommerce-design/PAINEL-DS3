@@ -89,11 +89,11 @@ técnico — quem usa é gestor e operação, não desenvolvedor.
 | --- | --- |
 | Representantes | completo: cadastro, equipe, contratos, premiação |
 | Financeiro | completo: rubricas do formulário real, débito, autorização em quatro instâncias, pagamento registrado |
+| Relatório de pagamento | completo: documento do representante, com equipe inteira ou parcial para líderes |
 | Prefeituras | funil de 9 etapas com RPCs e integridade no banco |
 | Importação | infraestrutura pronta, ligada só a Representantes |
 | Vendas Internas | tela vazia, sem backend |
 | Certificado Digital | tela vazia, sem backend |
-| Relatório de pagamento por representante | especificado (equipe inteira × parcial para líderes), **não construído** |
 | Relatórios PDF/Excel | não existe |
 | Visão Geral (dashboard) | tela estática |
 | Ações Gerenciais, Alertas, Pessoas, Suporte | telas vazias |
