@@ -1,47 +1,32 @@
 import { useMemo, useState } from "react";
 import {
-  Window,
-  Table,
-  EmptyState,
-  LoadingState,
+  Alert,
   ClassicButton,
+  EmptyState,
+  Field,
+  IndicatorSlot,
+  Input,
+  LoadingState,
+  Panel,
+  Table,
+  Tabs,
   Toolbar,
   ToolbarSeparator,
-  Input,
-  Field,
-  Panel,
-  IndicatorSlot,
-  Alert,
-  Dialog,
-  Tabs,
+  Window,
 } from "@/components/w2k";
 import type { Column } from "@/components/w2k";
-import {
-  useAcaoOrdem,
-  useApurarCompetencia,
-  useDebitos,
-  useItensOrdem,
-  useOrdensPagamento,
-  type OrdemPagamento,
-} from "./api";
+import { useApurarCompetencia, useDebitos, useOrdensPagamento, type OrdemPagamento } from "./api";
+import { OrdemDetalhe } from "./ordem-detalhe";
 
 const COLUNAS_ORDENS: Column[] = [
   { key: "representante", label: "Representante" },
-  { key: "itens", label: "Itens", align: "right" },
-  { key: "bruto", label: "Bruto", align: "right" },
-  { key: "desconto", label: "Desconto", align: "right" },
+  { key: "supervisor", label: "Supervisor" },
+  { key: "itens", label: "Linhas", align: "right" },
   { key: "liquido", label: "A pagar", align: "right" },
   { key: "devedor", label: "Saldo devedor", align: "right" },
+  { key: "autorizacoes", label: "Autorizações" },
   { key: "status", label: "Situação" },
   { key: "acao", label: "" },
-];
-
-const COLUNAS_ITENS: Column[] = [
-  { key: "tipo", label: "Tipo" },
-  { key: "descricao", label: "Descrição" },
-  { key: "bruto", label: "Bruto", align: "right" },
-  { key: "desconto", label: "Desconto", align: "right" },
-  { key: "liquido", label: "Líquido", align: "right" },
 ];
 
 const COLUNAS_DEBITOS: Column[] = [
@@ -52,14 +37,6 @@ const COLUNAS_DEBITOS: Column[] = [
   { key: "abatido", label: "Abatido", align: "right" },
   { key: "saldo", label: "Saldo", align: "right" },
 ];
-
-const ROTULO_TIPO: Record<string, string> = {
-  premiacao_contrato: "Premiação",
-  comissao_lideranca: "Liderança",
-  meta_plus: "Meta Plus",
-  incentivo_comercial: "Incentivo 10%",
-  ajuste: "Ajuste",
-};
 
 const ROTULO_STATUS: Record<string, string> = {
   aberta: "Aberta",
@@ -77,72 +54,34 @@ function moeda(valor: number): string {
 }
 
 function formatarData(iso: string): string {
-  const [ano, mes, dia] = iso.split("-");
+  const [ano, mes, dia] = iso.slice(0, 10).split("-");
   return `${dia}/${mes}/${ano}`;
 }
 
-/** Detalhe da ordem: todos os itens discriminados, como o gestor pediu. */
-function DialogDetalheOrdem({
-  ordem,
-  onClose,
-}: {
-  ordem: OrdemPagamento | null;
-  onClose: () => void;
-}) {
-  const itens = useItensOrdem(ordem?.id);
-
-  return (
-    <Dialog
-      open={ordem !== null}
-      title={
-        ordem
-          ? `Ordem de ${ordem.representante_codigo} — ${ordem.representante_nome}`
-          : "Ordem de pagamento"
-      }
-      onClose={onClose}
-      footer={<ClassicButton onClick={onClose}>Fechar</ClassicButton>}
-    >
-      {itens.isLoading ? (
-        <LoadingState />
-      ) : (itens.data ?? []).length === 0 ? (
-        <EmptyState
-          title="Nenhum item nesta ordem."
-          description="Apure a competência para gerar os itens."
-        />
-      ) : (
-        <div className="flex flex-col gap-2">
-          <Table
-            columns={COLUNAS_ITENS}
-            rows={(itens.data ?? []).map((item) => ({
-              tipo: ROTULO_TIPO[item.tipo] ?? item.tipo,
-              descricao: item.descricao,
-              bruto: moeda(item.valor_bruto),
-              desconto: item.desconto > 0 ? moeda(item.desconto) : "—",
-              liquido: moeda(item.valor_liquido),
-            }))}
-          />
-          {ordem ? (
-            <p className="text-right text-sm">
-              <strong>Total a pagar: {moeda(ordem.total_liquido)}</strong>
-            </p>
-          ) : null}
-        </div>
-      )}
-    </Dialog>
-  );
+/** Resumo do estado das autorizações, em uma frase curta. */
+function resumoAutorizacoes(ordem: OrdemPagamento): string {
+  if (ordem.autorizacoes_recusadas > 0) return "Recusada";
+  if (ordem.autorizacoes_exigidas === 0) return "Não exigida";
+  return `${ordem.autorizacoes_concedidas} de ${ordem.autorizacoes_exigidas}`;
 }
 
 export function PagamentosModule() {
   const [competencia, setCompetencia] = useState(periodoAtual);
   const [aba, setAba] = useState("ordens");
-  const [detalhe, setDetalhe] = useState<OrdemPagamento | null>(null);
+  const [ordemAbertaId, setOrdemAbertaId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
   const ordens = useOrdensPagamento(competencia);
   const debitos = useDebitos();
   const apurar = useApurarCompetencia();
-  const acao = useAcaoOrdem();
+
+  // A ordem aberta vem sempre da lista recarregada, para a tela refletir
+  // o estado de agora e não uma cópia congelada no clique.
+  const ordemAberta = useMemo(
+    () => (ordens.data ?? []).find((o) => o.id === ordemAbertaId) ?? null,
+    [ordens.data, ordemAbertaId],
+  );
 
   const totais = useMemo(() => {
     const lista = ordens.data ?? [];
@@ -152,7 +91,7 @@ export function PagamentosModule() {
         .filter((o) => o.status !== "cancelada")
         .reduce((soma, o) => soma + o.total_liquido, 0),
       pagas: lista.filter((o) => o.status === "paga").length,
-      abertas: lista.filter((o) => o.status === "aberta").length,
+      aguardando: lista.filter((o) => o.status === "fechada" && !o.liberada_para_pagamento).length,
     };
   }, [ordens.data]);
 
@@ -171,25 +110,12 @@ export function PagamentosModule() {
     }
   }
 
-  async function executar(ordem: OrdemPagamento, tipo: "fechar" | "pagar" | "cancelar") {
-    setErro(null);
-    setAviso(null);
-    let motivo: string | undefined;
-    if (tipo === "cancelar") {
-      const informado = window.prompt("Motivo do cancelamento da ordem:");
-      if (!informado?.trim()) return;
-      motivo = informado.trim();
-    } else if (tipo === "pagar") {
-      const confirmado = window.confirm(
-        `Marcar como paga a ordem de ${ordem.representante_nome} (${moeda(ordem.total_liquido)})?`,
-      );
-      if (!confirmado) return;
-    }
-    try {
-      await acao.mutateAsync({ ordemId: ordem.id, acao: tipo, motivo });
-    } catch (causa) {
-      setErro(causa instanceof Error ? causa.message : "Não foi possível concluir a ação.");
-    }
+  if (ordemAberta) {
+    return (
+      <Window title="Pagamentos — ordem" className="h-full">
+        <OrdemDetalhe ordem={ordemAberta} onVoltar={() => setOrdemAbertaId(null)} />
+      </Window>
+    );
   }
 
   return (
@@ -203,7 +129,11 @@ export function PagamentosModule() {
           />
         </Field>
         <ToolbarSeparator />
-        <ClassicButton variant="primary" onClick={() => void apurarAgora()} disabled={apurar.isPending}>
+        <ClassicButton
+          variant="primary"
+          onClick={() => void apurarAgora()}
+          disabled={apurar.isPending}
+        >
           {apurar.isPending ? "Apurando..." : "Apurar competência"}
         </ClassicButton>
       </Toolbar>
@@ -245,7 +175,7 @@ export function PagamentosModule() {
                   value={totais.quantidade === 0 ? undefined : moeda(totais.aPagar)}
                   note={totais.quantidade === 0 ? "Nada apurado nesta competência" : undefined}
                 />
-                <IndicatorSlot label="Abertas" value={totais.abertas} />
+                <IndicatorSlot label="Aguardando autorização" value={totais.aguardando} />
                 <IndicatorSlot label="Pagas" value={totais.pagas} />
               </div>
             </Panel>
@@ -261,32 +191,14 @@ export function PagamentosModule() {
                 caption={`Ordens — ${competencia}`}
                 rows={(ordens.data ?? []).map((ordem) => ({
                   representante: `${ordem.representante_codigo} — ${ordem.representante_nome}`,
+                  supervisor: ordem.supervisor_nome ?? "—",
                   itens: ordem.itens,
-                  bruto: moeda(ordem.total_bruto),
-                  desconto: ordem.total_desconto > 0 ? moeda(ordem.total_desconto) : "—",
                   liquido: moeda(ordem.total_liquido),
-                  devedor:
-                    ordem.saldo_devedor_atual > 0 ? moeda(ordem.saldo_devedor_atual) : "—",
+                  devedor: ordem.saldo_devedor_atual > 0 ? moeda(ordem.saldo_devedor_atual) : "—",
+                  autorizacoes: resumoAutorizacoes(ordem),
                   status: ROTULO_STATUS[ordem.status] ?? ordem.status,
                   acao: (
-                    <span className="flex gap-1">
-                      <ClassicButton onClick={() => setDetalhe(ordem)}>Detalhe</ClassicButton>
-                      {ordem.status === "aberta" ? (
-                        <ClassicButton onClick={() => void executar(ordem, "fechar")}>
-                          Fechar
-                        </ClassicButton>
-                      ) : null}
-                      {ordem.status === "aberta" || ordem.status === "fechada" ? (
-                        <>
-                          <ClassicButton onClick={() => void executar(ordem, "pagar")}>
-                            Pagar
-                          </ClassicButton>
-                          <ClassicButton onClick={() => void executar(ordem, "cancelar")}>
-                            Cancelar
-                          </ClassicButton>
-                        </>
-                      ) : null}
-                    </span>
+                    <ClassicButton onClick={() => setOrdemAbertaId(ordem.id)}>Abrir</ClassicButton>
                   ),
                 }))}
               />
@@ -318,8 +230,6 @@ export function PagamentosModule() {
           />
         </div>
       )}
-
-      <DialogDetalheOrdem ordem={detalhe} onClose={() => setDetalhe(null)} />
     </Window>
   );
 }

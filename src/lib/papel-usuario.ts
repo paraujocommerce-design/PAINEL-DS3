@@ -4,8 +4,9 @@ import { useAuth } from "@/lib/auth";
 
 /**
  * Papel do usuário logado.
- * Só o administrador pode excluir registros em definitivo — a operação
- * trabalha com cancelamento rastreável.
+ * Só o administrador pode excluir registros em definitivo e efetivar
+ * pagamento — a operação trabalha com cancelamento rastreável e prepara
+ * a ordem, mas não a paga. A supervisão só autoriza a instância dela.
  */
 export function usePapelUsuario() {
   const { session } = useAuth();
@@ -29,6 +30,8 @@ export function usePapelUsuario() {
   return {
     papeis,
     ehAdmin: papeis.includes("admin"),
+    ehOperacao: papeis.includes("operacao"),
+    ehSupervisao: papeis.includes("supervisao"),
     carregando: consulta.isLoading,
   };
 }
