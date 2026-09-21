@@ -22,8 +22,10 @@ import {
   useMetasVigentes,
   useProducoesPeriodo,
   useReativacoesPeriodo,
+  useExcluirRepresentante,
   useSupervisor,
 } from "./api";
+import { usePapelUsuario } from "@/lib/papel-usuario";
 import { derivarIndicadores, type LinhaRepresentante } from "./indicadores";
 import {
   ROTULO_STATUS,
@@ -78,6 +80,26 @@ export function RepresentantesModule({ supervisor }: { supervisor: SupervisorCon
   const [dialogo, setDialogo] = useState<"representante" | "producao" | "meta" | null>(null);
   const [detalhe, setDetalhe] = useState<LinhaRepresentante | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+  const { ehAdmin } = usePapelUsuario();
+  const excluir = useExcluirRepresentante();
+
+  async function excluirRepresentante(id: string, nome: string) {
+    setErroExclusao(null);
+    const confirmado = window.confirm(
+      `Excluir em definitivo o representante ${nome}?\n\n` +
+        "Os contratos, a produção e o histórico dele também serão apagados. " +
+        "Esta ação não pode ser desfeita.",
+    );
+    if (!confirmado) return;
+    try {
+      await excluir.mutateAsync(id);
+    } catch (causa) {
+      setErroExclusao(
+        causa instanceof Error ? causa.message : "Não foi possível excluir o representante.",
+      );
+    }
+  }
 
   const intervalo = useMemo(() => limitesDoPeriodo(periodo), [periodo]);
   const referencia = useMemo(() => referenciaDoPeriodo(periodo), [periodo]);
@@ -184,6 +206,12 @@ export function RepresentantesModule({ supervisor }: { supervisor: SupervisorCon
           Meta
         </ClassicButton>
       </Toolbar>
+
+      {erroExclusao ? (
+        <div className="my-2">
+          <Alert tone="error" title={erroExclusao} />
+        </div>
+      ) : null}
 
       {erro ? (
         <div className="my-2">
@@ -319,6 +347,19 @@ export function RepresentantesModule({ supervisor }: { supervisor: SupervisorCon
                       Editar
                     </ClassicButton>
                     <ClassicButton onClick={() => setDetalhe(linha)}>Histórico</ClassicButton>
+                    {ehAdmin ? (
+                      <ClassicButton
+                        onClick={() =>
+                          void excluirRepresentante(
+                            linha.representante.id,
+                            linha.representante.nome,
+                          )
+                        }
+                        disabled={excluir.isPending}
+                      >
+                        Excluir
+                      </ClassicButton>
+                    ) : null}
                   </span>
                 ),
               }))}

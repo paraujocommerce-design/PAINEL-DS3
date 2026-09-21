@@ -185,3 +185,38 @@ export function useCadastrarContrato() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["contratos"] }),
   });
 }
+
+/** Exclusão definitiva — apenas administrador (a função no banco barra os demais). */
+export function useExcluirContrato() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (contratoId: string) => {
+      const { error } = await cliente().rpc("excluir_contrato", {
+        p_contrato_id: contratoId,
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["contratos"] }),
+  });
+}
+
+/** Apaga todos os contratos de um período — usado para refazer uma carga errada. */
+export function useExcluirContratosPeriodo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (entrada: {
+      inicio: string;
+      fim: string;
+      somenteImportados: boolean;
+    }): Promise<number> => {
+      const { data, error } = await cliente().rpc("excluir_contratos_periodo", {
+        p_inicio: entrada.inicio,
+        p_fim: entrada.fim,
+        p_somente_importados: entrada.somenteImportados,
+      });
+      if (error) throw new Error(error.message);
+      return Number(data ?? 0);
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["contratos"] }),
+  });
+}

@@ -14,7 +14,12 @@ import {
   Alert,
 } from "@/components/w2k";
 import type { Column } from "@/components/w2k";
-import { useContratosIncompletos, useContratosLancados } from "./api";
+import {
+  useContratosIncompletos,
+  useContratosLancados,
+  useExcluirContrato,
+} from "./api";
+import { usePapelUsuario } from "@/lib/papel-usuario";
 import { DialogNovoContrato } from "./formularios";
 
 const COLUNAS: Column[] = [
@@ -26,6 +31,7 @@ const COLUNAS: Column[] = [
   { key: "premiacao", label: "Premiação", align: "right" },
   { key: "lider", label: "Liderança" },
   { key: "situacao", label: "Situação" },
+  { key: "acao", label: "" },
 ];
 
 function periodoAtual(): string {
@@ -57,6 +63,25 @@ export function ContratosModule() {
   const intervalo = useMemo(() => limitesDoPeriodo(periodo), [periodo]);
   const contratos = useContratosLancados(intervalo, periodo);
   const incompletos = useContratosIncompletos();
+  const { ehAdmin } = usePapelUsuario();
+  const excluir = useExcluirContrato();
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+
+  async function excluirContrato(id: string, descricao: string) {
+    setErroExclusao(null);
+    const confirmado = window.confirm(
+      `Excluir em definitivo o contrato ${descricao}?\n\n` +
+        "Esta ação não pode ser desfeita. Fica registrado quem excluiu e quando.",
+    );
+    if (!confirmado) return;
+    try {
+      await excluir.mutateAsync(id);
+    } catch (causa) {
+      setErroExclusao(
+        causa instanceof Error ? causa.message : "Não foi possível excluir o contrato.",
+      );
+    }
+  }
 
   const linhas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -103,6 +128,12 @@ export function ContratosModule() {
           Lançar contrato
         </ClassicButton>
       </Toolbar>
+
+      {erroExclusao ? (
+        <div className="my-2">
+          <Alert tone="error" title={erroExclusao} />
+        </div>
+      ) : null}
 
       {contratos.error ? (
         <div className="my-2">
@@ -184,6 +215,19 @@ export function ContratosModule() {
                     ) : null}
                   </span>
                 ),
+                acao: ehAdmin ? (
+                  <ClassicButton
+                    onClick={() =>
+                      void excluirContrato(
+                        contrato.id,
+                        `${contrato.codigo_contrato} — ${contrato.nome_fantasia ?? "sem cliente"}`,
+                      )
+                    }
+                    disabled={excluir.isPending}
+                  >
+                    Excluir
+                  </ClassicButton>
+                ) : null,
               }))}
             />
           )}

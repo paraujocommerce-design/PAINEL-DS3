@@ -585,3 +585,17 @@ export function useCadastrarMeta() {
     onSuccess: () => void invalidar(),
   });
 }
+
+/** Exclusão definitiva do representante e de tudo que depende dele — apenas administrador. */
+export function useExcluirRepresentante() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: async (representanteId: string) => {
+      const { error } = await cliente().rpc("excluir_representante", {
+        p_representante_id: representanteId,
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => void invalidar(),
+  });
+}
