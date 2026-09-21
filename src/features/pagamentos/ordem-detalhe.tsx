@@ -502,7 +502,15 @@ function DialogPagar({
 }
 
 /** A ordem aberta como documento, no formato do formulário da DS3. */
-export function OrdemDetalhe({ ordem, onVoltar }: { ordem: OrdemPagamento; onVoltar: () => void }) {
+export function OrdemDetalhe({
+  ordem,
+  onVoltar,
+  onRelatorio,
+}: {
+  ordem: OrdemPagamento;
+  onVoltar: () => void;
+  onRelatorio: () => void;
+}) {
   const { ehAdmin } = usePapelUsuario();
   const linhas = useLinhasOrdem(ordem.id);
   const autorizacoes = useAutorizacoes(ordem.id);
@@ -568,6 +576,8 @@ export function OrdemDetalhe({ ordem, onVoltar }: { ordem: OrdemPagamento; onVol
     <div className="flex flex-col gap-[3px]">
       <Toolbar>
         <ClassicButton onClick={onVoltar}>← Voltar</ClassicButton>
+        <ToolbarSeparator />
+        <ClassicButton onClick={onRelatorio}>Relatório do representante</ClassicButton>
         <ToolbarSeparator />
         {aberta ? (
           <>

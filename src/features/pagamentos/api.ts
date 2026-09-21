@@ -87,6 +87,25 @@ export type Autorizacao = {
   observacao: string | null;
 };
 
+/** Linha do relatório do representante, com a origem do valor identificada. */
+export type LinhaRelatorio = {
+  item_id: string;
+  rubrica: string;
+  rotulo: string;
+  ordem_exibicao: number;
+  codigo_contrato: string | null;
+  nome_fantasia: string | null;
+  data_venda: string | null;
+  origem_representante_id: string;
+  origem_codigo: string;
+  origem_nome: string;
+  e_da_equipe: boolean;
+  data_referencia: string | null;
+  valor_liquido: number;
+  descricao: string;
+  observacao: string | null;
+};
+
 export type DebitoRepresentante = {
   id: string;
   representante_codigo: string;
@@ -112,6 +131,7 @@ const chave = {
   rubricas: ["pagamentos", "rubricas"] as const,
   debitos: ["pagamentos", "debitos"] as const,
   contratos: (representanteId: string) => ["pagamentos", "contratos", representanteId] as const,
+  relatorio: (ordemId: string) => ["pagamentos", "relatorio", ordemId] as const,
 };
 
 export function useOrdensPagamento(competencia: string) {
@@ -233,6 +253,39 @@ export function useAutorizacoes(ordemId?: string) {
         decidido_em: texto(linha["decidido_em"]),
         decidiu_no_sistema: linha["decidido_por"] !== null,
         registrado_por_terceiro: linha["registrado_por"] !== null,
+        observacao: texto(linha["observacao"]),
+      }));
+    },
+  });
+}
+
+export function useRelatorioPagamento(ordemId?: string) {
+  return useQuery({
+    queryKey: chave.relatorio(ordemId ?? ""),
+    enabled: Boolean(ordemId),
+    queryFn: async (): Promise<LinhaRelatorio[]> => {
+      const { data, error } = await cliente()
+        .from("v_relatorio_pagamento")
+        .select("*")
+        .eq("ordem_id", ordemId!)
+        .order("ordem_exibicao")
+        .order("data_referencia");
+      if (error) throw new Error(error.message);
+      return ((data ?? []) as Record<string, unknown>[]).map((linha) => ({
+        item_id: String(linha["item_id"]),
+        rubrica: String(linha["rubrica"]),
+        rotulo: String(linha["rotulo"]),
+        ordem_exibicao: numero(linha["ordem_exibicao"]),
+        codigo_contrato: texto(linha["codigo_contrato"]),
+        nome_fantasia: texto(linha["nome_fantasia"]),
+        data_venda: texto(linha["data_venda"]),
+        origem_representante_id: String(linha["origem_representante_id"]),
+        origem_codigo: String(linha["origem_codigo"]),
+        origem_nome: String(linha["origem_nome"]),
+        e_da_equipe: Boolean(linha["e_da_equipe"]),
+        data_referencia: texto(linha["data_referencia"]),
+        valor_liquido: numero(linha["valor_liquido"]),
+        descricao: String(linha["descricao"]),
         observacao: texto(linha["observacao"]),
       }));
     },

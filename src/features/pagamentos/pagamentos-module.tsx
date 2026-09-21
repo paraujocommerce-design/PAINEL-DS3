@@ -17,6 +17,7 @@ import {
 import type { Column } from "@/components/w2k";
 import { useApurarCompetencia, useDebitos, useOrdensPagamento, type OrdemPagamento } from "./api";
 import { OrdemDetalhe } from "./ordem-detalhe";
+import { RelatorioPagamento } from "./relatorio";
 
 const COLUNAS_ORDENS: Column[] = [
   { key: "representante", label: "Representante" },
@@ -69,6 +70,7 @@ export function PagamentosModule() {
   const [competencia, setCompetencia] = useState(periodoAtual);
   const [aba, setAba] = useState("ordens");
   const [ordemAbertaId, setOrdemAbertaId] = useState<string | null>(null);
+  const [verRelatorio, setVerRelatorio] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -110,10 +112,22 @@ export function PagamentosModule() {
     }
   }
 
+  if (ordemAberta && verRelatorio) {
+    return (
+      <Window title="Pagamentos — relatório do representante" className="h-full">
+        <RelatorioPagamento ordem={ordemAberta} onVoltar={() => setVerRelatorio(false)} />
+      </Window>
+    );
+  }
+
   if (ordemAberta) {
     return (
       <Window title="Pagamentos — ordem" className="h-full">
-        <OrdemDetalhe ordem={ordemAberta} onVoltar={() => setOrdemAbertaId(null)} />
+        <OrdemDetalhe
+          ordem={ordemAberta}
+          onVoltar={() => setOrdemAbertaId(null)}
+          onRelatorio={() => setVerRelatorio(true)}
+        />
       </Window>
     );
   }

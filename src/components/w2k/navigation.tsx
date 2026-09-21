@@ -88,9 +88,11 @@ export function MenuBar({ menus }: { menus: Menu[] }) {
   );
 }
 
-export function Toolbar({ children }: { children: ReactNode }) {
+export function Toolbar({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-1 bg-surface px-1 py-[3px]">{children}</div>
+    <div className={cn("flex flex-wrap items-center gap-1 bg-surface px-1 py-[3px]", className)}>
+      {children}
+    </div>
   );
 }
 
