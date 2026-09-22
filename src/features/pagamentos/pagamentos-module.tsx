@@ -11,6 +11,7 @@ import {
 } from "@/components/w2k";
 import { useOrdensPagamento, useRepresentantes } from "./api";
 import { useContratosAguardando } from "./api-wizard";
+import { DashboardAcoes } from "./dashboard-acoes";
 import { OrdemDetalhe } from "./ordem-detalhe";
 import { OrdemImagem } from "./ordem-imagem";
 import { RelatorioPagamento } from "./relatorio";
@@ -29,7 +30,7 @@ function periodoAtual(): string {
 }
 
 export function PagamentosModule() {
-  const [aba, setAba] = useState<"contratos" | "ordens">("contratos");
+  const [aba, setAba] = useState<"acoes" | "contratos" | "ordens">("acoes");
   const [representanteId, setRepresentanteId] = useState("");
   const [competencia, setCompetencia] = useState(periodoAtual());
   const [wizard, setWizard] = useState(false);
@@ -91,6 +92,12 @@ export function PagamentosModule() {
         <ToolbarSeparator />
         <div className="flex gap-2">
           <ClassicButton
+            variant={aba === "acoes" ? "primary" : "default"}
+            onClick={() => setAba("acoes")}
+          >
+            Próximas ações
+          </ClassicButton>
+          <ClassicButton
             variant={aba === "contratos" ? "primary" : "default"}
             onClick={() => setAba("contratos")}
           >
@@ -106,7 +113,12 @@ export function PagamentosModule() {
       </Toolbar>
 
       <Panel>
-        {aba === "contratos" ? (
+        {aba === "acoes" ? (
+          <DashboardAcoes onAbrirOrdem={(id) => {
+            setOrdemAbertaId(id);
+            setAba("ordens");
+          }} />
+        ) : aba === "contratos" ? (
           <>
             <div className="mb-3 flex gap-2">
               <select
