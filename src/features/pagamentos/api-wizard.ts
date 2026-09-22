@@ -1,6 +1,10 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useQueryClient } from "@tanstack/react-query";
-import { cliente } from "@/lib/supabase";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+
+function cliente() {
+  if (!supabase) throw new Error("Backend não configurado.");
+  return supabase;
+}
 
 export type ContratoAguardando = {
   id: string;
@@ -66,9 +70,8 @@ export function useCriarOrdemCompleta() {
       representanteId: string;
       dataOrdem: string;
       contratoIds: string[];
-      rubricas: Record<string, number>; // codigo_rubrica -> valor
+      rubricas: Record<string, number>;
     }): Promise<string> => {
-      // 1. Criar ordem vazia
       const { data: ordemId, error: erroOrdem } = await cliente().rpc(
         "criar_ordem_pagamento",
         {
@@ -78,7 +81,6 @@ export function useCriarOrdemCompleta() {
       );
       if (erroOrdem) throw new Error(erroOrdem.message);
 
-      // 2. Incluir contratos disponíveis
       if (entrada.contratoIds.length > 0) {
         const { error: erroContratos } = await cliente().rpc(
           "incluir_contratos_na_ordem",
@@ -91,7 +93,6 @@ export function useCriarOrdemCompleta() {
         if (erroContratos) throw new Error(erroContratos.message);
       }
 
-      // 3. Incluir rubricas manuais (as que têm valor > 0)
       for (const [rubrica, valor] of Object.entries(entrada.rubricas)) {
         if (valor > 0) {
           const { error: erroRubrica } = await cliente().rpc(
@@ -108,6 +109,6 @@ export function useCriarOrdemCompleta() {
 
       return ordemId;
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['pagamentos'] }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["pagamentos"] }),
   });
 }

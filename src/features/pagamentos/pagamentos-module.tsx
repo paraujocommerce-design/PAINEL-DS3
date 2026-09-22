@@ -1,332 +1,220 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   ClassicButton,
-  Dialog,
   EmptyState,
-  Field,
-  IndicatorSlot,
-  Input,
   LoadingState,
   Panel,
-  Select,
-  Table,
-  Tabs,
   Toolbar,
   ToolbarSeparator,
   Window,
 } from "@/components/w2k";
-import type { Column } from "@/components/w2k";
-import {
-  useCriarOrdem,
-  useDebitos,
-  useOrdensPagamento,
-  useRepresentantes,
-  type OrdemPagamento,
-} from "./api";
+import { useOrdensPagamento, useRepresentantes } from "./api";
+import { useContratosAguardando } from "./api-wizard";
 import { OrdemDetalhe } from "./ordem-detalhe";
 import { OrdemImagem } from "./ordem-imagem";
 import { RelatorioPagamento } from "./relatorio";
-
-const COLUNAS_ORDENS: Column[] = [
-  { key: "dia", label: "Dia" },
-  { key: "representante", label: "Representante" },
-  { key: "supervisor", label: "Supervisor" },
-  { key: "itens", label: "Linhas", align: "right" },
-  { key: "liquido", label: "A pagar", align: "right" },
-  { key: "devedor", label: "Saldo devedor", align: "right" },
-  { key: "autorizacoes", label: "Autorizações" },
-  { key: "status", label: "Situação" },
-  { key: "acao", label: "" },
-];
-
-const COLUNAS_DEBITOS: Column[] = [
-  { key: "representante", label: "Representante" },
-  { key: "motivo", label: "Motivo" },
-  { key: "data", label: "Desde" },
-  { key: "original", label: "Original", align: "right" },
-  { key: "abatido", label: "Abatido", align: "right" },
-  { key: "saldo", label: "Saldo", align: "right" },
-];
-
-const ROTULO_STATUS: Record<string, string> = {
-  aberta: "Aberta",
-  fechada: "Fechada",
-  paga: "Paga",
-  cancelada: "Cancelada",
-};
-
-function periodoAtual(): string {
-  return new Date().toISOString().slice(0, 7);
-}
-
-function moeda(valor: number): string {
-  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
+import { WizardNovaOrdem } from "./wizard-nova-ordem";
 
 function formatarData(iso: string): string {
-  const [ano, mes, dia] = iso.slice(0, 10).split("-");
-  return `${dia}/${mes}/${ano}`;
+  const [ano, mes, dia] = iso.split("-");
+  return `${dia}/${mes}`;
 }
 
-/** Resumo do estado das autorizações, em uma frase curta. */
-function resumoAutorizacoes(ordem: OrdemPagamento): string {
-  if (ordem.autorizacoes_recusadas > 0) return "Recusada";
-  if (ordem.autorizacoes_exigidas === 0) return "Não exigida";
-  return `${ordem.autorizacoes_concedidas} de ${ordem.autorizacoes_exigidas}`;
+function periodoAtual(): string {
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  return `${ano}-${mes}-01`;
 }
 
-function hoje(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/** Abre uma ordem vazia. O que ela paga é escolhido depois, item a item. */
-function DialogNovaOrdem({
-  aberto,
-  onFechar,
-  onCriada,
-  onErro,
-}: {
-  aberto: boolean;
-  onFechar: () => void;
-  onCriada: (ordemId: string) => void;
-  onErro: (erro: string) => void;
-}) {
-  const representantes = useRepresentantes();
-  const criar = useCriarOrdem();
+export function PagamentosModule() {
+  const [aba, setAba] = useState<"contratos" | "ordens">("contratos");
   const [representanteId, setRepresentanteId] = useState("");
-  const [data, setData] = useState(hoje);
+  const [competencia, setCompetencia] = useState(periodoAtual());
+  const [wizard, setWizard] = useState(false);
+  const [ordemAbertaId, setOrdemAbertaId] = useState<string | null>(null);
+  const [verImagem, setVerImagem] = useState(false);
+  const [verRelatorio, setVerRelatorio] = useState(false);
 
-  async function abrir() {
-    if (!representanteId) return onErro("Escolha o representante.");
-    try {
-      const id = await criar.mutateAsync({ representanteId, data });
-      setRepresentanteId("");
-      onCriada(id);
-    } catch (causa) {
-      onErro(causa instanceof Error ? causa.message : "Não foi possível abrir a ordem.");
+  const representantes = useRepresentantes();
+  const contratos = useContratosAguardando(representanteId);
+  const ordens = useOrdensPagamento(competencia);
+
+  if (ordemAbertaId && verImagem) {
+    const ordem = (ordens.data ?? []).find((o) => o.id === ordemAbertaId);
+    if (ordem) {
+      return (
+        <Window title="Pagamentos — ordem em imagem" className="h-full">
+          <OrdemImagem ordem={ordem} onVoltar={() => setVerImagem(false)} />
+        </Window>
+      );
+    }
+  }
+
+  if (ordemAbertaId && verRelatorio) {
+    const ordem = (ordens.data ?? []).find((o) => o.id === ordemAbertaId);
+    if (ordem) {
+      return (
+        <Window title="Pagamentos — relatório do representante" className="h-full">
+          <RelatorioPagamento
+            ordem={ordem}
+            onVoltar={() => setVerRelatorio(false)}
+          />
+        </Window>
+      );
+    }
+  }
+
+  if (ordemAbertaId) {
+    const ordem = (ordens.data ?? []).find((o) => o.id === ordemAbertaId);
+    if (ordem) {
+      return (
+        <Window title="Pagamentos — detalhe da ordem" className="h-full">
+          <OrdemDetalhe
+            ordem={ordem}
+            onVoltar={() => setOrdemAbertaId(null)}
+            onImagem={() => setVerImagem(true)}
+            onRelatorio={() => setVerRelatorio(true)}
+          />
+        </Window>
+      );
     }
   }
 
   return (
-    <Dialog
-      open={aberto}
-      title="Nova ordem de pagamento"
-      onClose={onFechar}
-      footer={
-        <>
-          <ClassicButton onClick={onFechar}>Cancelar</ClassicButton>
-          <ClassicButton variant="primary" onClick={() => void abrir()} disabled={criar.isPending}>
-            {criar.isPending ? "Abrindo..." : "Abrir ordem"}
-          </ClassicButton>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-2">
-        <Field label="Representante">
-          <Select value={representanteId} onChange={(e) => setRepresentanteId(e.target.value)}>
-            <option value="">Escolha...</option>
-            {(representantes.data ?? []).map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.codigo} — {r.nome}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Dia da ordem" hint="As ordens são diárias, conforme a demanda.">
-          <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
-        </Field>
-      </div>
-    </Dialog>
-  );
-}
-
-export function PagamentosModule() {
-  const [competencia, setCompetencia] = useState(periodoAtual);
-  const [aba, setAba] = useState("ordens");
-  const [ordemAbertaId, setOrdemAbertaId] = useState<string | null>(null);
-  const [verRelatorio, setVerRelatorio] = useState(false);
-  const [verImagem, setVerImagem] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
-
-  const [novaOrdem, setNovaOrdem] = useState(false);
-  const ordens = useOrdensPagamento(competencia);
-  const debitos = useDebitos();
-
-  // A ordem aberta vem sempre da lista recarregada, para a tela refletir
-  // o estado de agora e não uma cópia congelada no clique.
-  const ordemAberta = useMemo(
-    () => (ordens.data ?? []).find((o) => o.id === ordemAbertaId) ?? null,
-    [ordens.data, ordemAbertaId],
-  );
-
-  const totais = useMemo(() => {
-    const lista = ordens.data ?? [];
-    return {
-      quantidade: lista.length,
-      aPagar: lista
-        .filter((o) => o.status !== "cancelada")
-        .reduce((soma, o) => soma + o.total_liquido, 0),
-      pagas: lista.filter((o) => o.status === "paga").length,
-      aguardando: lista.filter((o) => o.status === "fechada" && !o.liberada_para_pagamento).length,
-    };
-  }, [ordens.data]);
-
-  if (ordemAberta && verImagem) {
-    return (
-      <Window title="Pagamentos — ordem em imagem" className="h-full">
-        <OrdemImagem ordem={ordemAberta} onVoltar={() => setVerImagem(false)} />
-      </Window>
-    );
-  }
-
-  if (ordemAberta && verRelatorio) {
-    return (
-      <Window title="Pagamentos — relatório do representante" className="h-full">
-        <RelatorioPagamento ordem={ordemAberta} onVoltar={() => setVerRelatorio(false)} />
-      </Window>
-    );
-  }
-
-  if (ordemAberta) {
-    return (
-      <Window title="Pagamentos — ordem" className="h-full">
-        <OrdemDetalhe
-          ordem={ordemAberta}
-          onVoltar={() => setOrdemAbertaId(null)}
-          onRelatorio={() => setVerRelatorio(true)}
-          onImagem={() => setVerImagem(true)}
-        />
-      </Window>
-    );
-  }
-
-  return (
-    <Window title="Pagamentos — ordens e saldo devedor" className="h-full">
+    <>
       <Toolbar>
-        <Field label="Competência">
-          <Input
-            type="month"
-            value={competencia}
-            onChange={(event) => setCompetencia(event.target.value || periodoAtual())}
-          />
-        </Field>
-        <ToolbarSeparator />
-        <ClassicButton
-          variant="primary"
-          onClick={() => {
-            setErro(null);
-            setNovaOrdem(true);
-          }}
-        >
+        <ClassicButton variant="primary" onClick={() => setWizard(true)}>
           Nova ordem
         </ClassicButton>
+        <ToolbarSeparator />
+        <div className="flex gap-2">
+          <ClassicButton
+            variant={aba === "contratos" ? "primary" : "default"}
+            onClick={() => setAba("contratos")}
+          >
+            Contratos aguardando
+          </ClassicButton>
+          <ClassicButton
+            variant={aba === "ordens" ? "primary" : "default"}
+            onClick={() => setAba("ordens")}
+          >
+            Ordens criadas
+          </ClassicButton>
+        </div>
       </Toolbar>
 
-      <DialogNovaOrdem
-        aberto={novaOrdem}
-        onFechar={() => setNovaOrdem(false)}
-        onCriada={(id) => {
-          setNovaOrdem(false);
-          setOrdemAbertaId(id);
-        }}
-        onErro={setErro}
-      />
+      <Panel>
+        {aba === "contratos" ? (
+          <>
+            <div className="mb-3 flex gap-2">
+              <select
+                value={representanteId}
+                onChange={(e) => setRepresentanteId(e.target.value)}
+                className="rounded border px-2 py-1 text-sm"
+              >
+                <option value="">Todos os representantes</option>
+                {(representantes.data ?? []).map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.codigo} — {r.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-      {erro ? (
-        <div className="my-2">
-          <Alert tone="error" title={erro} />
-        </div>
-      ) : null}
-      {aviso ? (
-        <div className="my-2">
-          <Alert tone="info" title={aviso} />
-        </div>
-      ) : null}
-
-      <div className="mt-2">
-        <Tabs
-          value={aba}
-          onChange={setAba}
-          items={[
-            { value: "ordens", label: "Ordens de pagamento" },
-            { value: "debitos", label: "Saldo devedor" },
-          ]}
-        />
-      </div>
-
-      {aba === "ordens" ? (
-        ordens.isLoading ? (
-          <div className="mt-2">
-            <LoadingState />
-          </div>
-        ) : (
-          <div className="mt-2 flex flex-col gap-[3px]">
-            <Panel title="Resumo da competência">
-              <div className="grid gap-[3px] sm:grid-cols-2 xl:grid-cols-4">
-                <IndicatorSlot label="Ordens" value={totais.quantidade} />
-                <IndicatorSlot
-                  label="Total a pagar"
-                  value={totais.quantidade === 0 ? undefined : moeda(totais.aPagar)}
-                  note={totais.quantidade === 0 ? "Nada apurado nesta competência" : undefined}
-                />
-                <IndicatorSlot label="Aguardando autorização" value={totais.aguardando} />
-                <IndicatorSlot label="Pagas" value={totais.pagas} />
-              </div>
-            </Panel>
-
-            {(ordens.data ?? []).length === 0 ? (
+            {contratos.isLoading ? (
+              <LoadingState />
+            ) : (contratos.data ?? []).length === 0 ? (
               <EmptyState
-                title="Nenhuma ordem nesta competência."
-                description="Use 'Nova ordem' para abrir uma e escolher o que ela paga."
+                title="Nenhum contrato aguardando."
+                description="Todos os contratos já foram lançados em ordens."
               />
             ) : (
-              <Table
-                columns={COLUNAS_ORDENS}
-                caption={`Ordens — ${competencia}`}
-                rows={(ordens.data ?? []).map((ordem) => ({
-                  dia: formatarData(ordem.data_ordem),
-                  representante: `${ordem.representante_codigo} — ${ordem.representante_nome}`,
-                  supervisor: ordem.supervisor_nome ?? "—",
-                  itens: ordem.itens,
-                  liquido: moeda(ordem.total_liquido),
-                  devedor: ordem.saldo_devedor_atual > 0 ? moeda(ordem.saldo_devedor_atual) : "—",
-                  autorizacoes: resumoAutorizacoes(ordem),
-                  status: ROTULO_STATUS[ordem.status] ?? ordem.status,
-                  acao: (
-                    <ClassicButton onClick={() => setOrdemAbertaId(ordem.id)}>Abrir</ClassicButton>
-                  ),
-                }))}
-              />
+              <div className="space-y-1">
+                {(contratos.data ?? []).map((c) => (
+                  <div
+                    key={c.id}
+                    className="border rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-900"
+                  >
+                    <div className="flex justify-between">
+                      <span className="font-bold">{c.codigo_contrato}</span>
+                      <span className="text-sm">
+                        {c.pos_venda_pendente ? "❌ Pendente" : "✓ OK"}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {c.nome_fantasia}
+                    </div>
+                    {c.premiavel && (
+                      <div className="text-sm text-green-600">
+                        R${" "}
+                        {c.valor_disponivel_premiacao.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
-          </div>
-        )
-      ) : debitos.isLoading ? (
-        <div className="mt-2">
-          <LoadingState />
-        </div>
-      ) : (debitos.data ?? []).length === 0 ? (
-        <EmptyState
-          title="Nenhum débito em aberto."
-          description="Débitos registrados aparecem aqui até serem totalmente abatidos."
-        />
-      ) : (
-        <div className="mt-2">
-          <Table
-            columns={COLUNAS_DEBITOS}
-            caption="Débitos em aberto"
-            rows={(debitos.data ?? []).map((debito) => ({
-              representante: `${debito.representante_codigo} — ${debito.representante_nome}`,
-              motivo: debito.motivo,
-              data: formatarData(debito.data_origem),
-              original: moeda(debito.valor_original),
-              abatido: debito.valor_abatido > 0 ? moeda(debito.valor_abatido) : "—",
-              saldo: moeda(debito.saldo),
-            }))}
-          />
-        </div>
-      )}
-    </Window>
+          </>
+        ) : (
+          <>
+            <div className="mb-3">
+              <input
+                type="month"
+                value={competencia.slice(0, 7)}
+                onChange={(e) => setCompetencia(e.target.value + "-01")}
+                className="rounded border px-2 py-1 text-sm"
+              />
+            </div>
+
+            {ordens.isLoading ? (
+              <LoadingState />
+            ) : (ordens.data ?? []).length === 0 ? (
+              <EmptyState
+                title="Nenhuma ordem nesta competência."
+                description="Use 'Nova ordem' para abrir uma."
+              />
+            ) : (
+              <div className="space-y-1">
+                {(ordens.data ?? []).map((o) => (
+                  <div
+                    key={o.id}
+                    onClick={() => setOrdemAbertaId(o.id)}
+                    className="cursor-pointer border rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-900"
+                  >
+                    <div className="flex justify-between">
+                      <span className="font-bold">{formatarData(o.data_ordem)}</span>
+                      <span className="text-sm">{o.status}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {o.representante_codigo} — {o.representante_nome}
+                    </div>
+                    <div className="text-sm">
+                      {o.itens} itens — R${" "}
+                      {o.total_liquido.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </Panel>
+
+      <WizardNovaOrdem
+        aberto={wizard}
+        onFechar={() => setWizard(false)}
+        onCriada={(id) => {
+          setWizard(false);
+          setOrdemAbertaId(id);
+          setAba("ordens");
+        }}
+      />
+    </>
   );
 }
