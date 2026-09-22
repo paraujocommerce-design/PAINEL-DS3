@@ -377,6 +377,104 @@ export function useRepresentantes() {
   });
 }
 
+export type AutorizacaoPendente = {
+  ordem_id: string;
+  data_ordem: string;
+  representante_codigo: string;
+  representante_nome: string;
+  total_itens: number;
+  total_valor: number;
+};
+
+export function useAutorizacoesPendentes() {
+  return useQuery({
+    queryKey: ["pagamentos", "autorizacoes-pendentes"],
+    staleTime: 30 * 1000,
+    queryFn: async (): Promise<AutorizacaoPendente[]> => {
+      const { data, error } = await cliente()
+        .from("v_autorizacoes_pendentes_supervisao")
+        .select("*");
+      if (error) throw new Error(error.message);
+      return ((data ?? []) as Record<string, unknown>[]).map((l) => ({
+        ordem_id: String(l["ordem_id"]),
+        data_ordem: String(l["data_ordem"]),
+        representante_codigo: String(l["representante_codigo"]),
+        representante_nome: String(l["representante_nome"]),
+        total_itens: numero(l["total_itens"]),
+        total_valor: numero(l["total_valor"]),
+      }));
+    },
+  });
+}
+
+export type OrdemProntaPagar = {
+  id: string;
+  data_ordem: string;
+  representante_codigo: string;
+  representante_nome: string;
+  total_itens: number;
+  total_valor: number;
+  situacao: string;
+  pode_pagar: boolean;
+};
+
+export function useOrdensProntasParaPagar() {
+  return useQuery({
+    queryKey: ["pagamentos", "prontas-pagar"],
+    staleTime: 30 * 1000,
+    queryFn: async (): Promise<OrdemProntaPagar[]> => {
+      const { data, error } = await cliente()
+        .from("v_ordens_prontas_para_pagar")
+        .select("*");
+      if (error) throw new Error(error.message);
+      return ((data ?? []) as Record<string, unknown>[]).map((l) => ({
+        id: String(l["id"]),
+        data_ordem: String(l["data_ordem"]),
+        representante_codigo: String(l["representante_codigo"]),
+        representante_nome: String(l["representante_nome"]),
+        total_itens: numero(l["total_itens"]),
+        total_valor: numero(l["total_valor"]),
+        situacao: String(l["situacao"]),
+        pode_pagar: Boolean(l["pode_pagar"]),
+      }));
+    },
+  });
+}
+
+export type OrdemAberta = {
+  id: string;
+  data_ordem: string;
+  representante_codigo: string;
+  representante_nome: string;
+  total_itens: number;
+  total_valor: number;
+  autorizacoes_exigidas: number;
+  autorizacoes_pendentes: number;
+};
+
+export function useOrdensAbertasOperacao() {
+  return useQuery({
+    queryKey: ["pagamentos", "abertas-operacao"],
+    staleTime: 30 * 1000,
+    queryFn: async (): Promise<OrdemAberta[]> => {
+      const { data, error } = await cliente()
+        .from("v_ordens_abertas_operacao")
+        .select("*");
+      if (error) throw new Error(error.message);
+      return ((data ?? []) as Record<string, unknown>[]).map((l) => ({
+        id: String(l["id"]),
+        data_ordem: String(l["data_ordem"]),
+        representante_codigo: String(l["representante_codigo"]),
+        representante_nome: String(l["representante_nome"]),
+        total_itens: numero(l["total_itens"]),
+        total_valor: numero(l["total_valor"]),
+        autorizacoes_exigidas: numero(l["autorizacoes_exigidas"]),
+        autorizacoes_pendentes: numero(l["autorizacoes_pendentes"]),
+      }));
+    },
+  });
+}
+
 export function usePagamentosDisponiveis(representanteId?: string, data?: string) {
   return useQuery({
     queryKey: ["pagamentos", "disponiveis", representanteId ?? "", data ?? ""],
