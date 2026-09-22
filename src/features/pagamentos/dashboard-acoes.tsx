@@ -34,11 +34,11 @@ export function DashboardAcoes({
   const ordensParaPagar = useOrdensProntasParaPagar();
   const ordensAbertas = useOrdensAbertasOperacao();
 
-  if (!papel) return <LoadingState />;
+  if (!papel || papel.carregando) return <LoadingState />;
 
   return (
     <Window title="Próximas ações" className="h-full">
-      {papel === "supervisao" && (
+      {papel.ehSupervisao && (
         <div className="flex flex-col gap-3">
           <Toolbar>
             <h2 className="text-sm font-bold">
@@ -75,7 +75,6 @@ export function DashboardAcoes({
                           {moeda(a.total_valor)}
                         </div>
                         <ClassicButton
-                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             onAbrirOrdem(a.ordem_id);
@@ -93,7 +92,7 @@ export function DashboardAcoes({
         </div>
       )}
 
-      {papel === "admin" && (
+      {papel.ehAdmin && (
         <div className="flex flex-col gap-3">
           <Toolbar>
             <h2 className="text-sm font-bold">
@@ -138,7 +137,6 @@ export function DashboardAcoes({
                         </div>
                         {o.pode_pagar && (
                           <ClassicButton
-                            size="sm"
                             variant="primary"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -158,7 +156,7 @@ export function DashboardAcoes({
         </div>
       )}
 
-      {papel === "operacao" && (
+      {papel.ehOperacao && (
         <div className="flex flex-col gap-3">
           <Toolbar>
             <h2 className="text-sm font-bold">
@@ -200,7 +198,6 @@ export function DashboardAcoes({
                           {moeda(o.total_valor)}
                         </div>
                         <ClassicButton
-                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             onAbrirOrdem(o.id);
