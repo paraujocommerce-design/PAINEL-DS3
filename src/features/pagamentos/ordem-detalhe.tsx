@@ -37,11 +37,10 @@ import {
   type OrdemPagamento,
 } from "./api";
 
-const INSTANCIAS: Array<{ valor: InstanciaAutorizacao; rotulo: string; padrao: string }> = [
-  { valor: "gerencia", rotulo: "Gerência", padrao: "" },
-  { valor: "supervisao", rotulo: "Supervisão", padrao: "Berg Calasans" },
-  { valor: "auditoria", rotulo: "Auditoria", padrao: "Durval" },
-  { valor: "diretoria", rotulo: "Diretoria", padrao: "Kennedy" },
+const INSTANCIAS: Array<{ valor: InstanciaAutorizacao; rotulo: string }> = [
+  { valor: "operacao", rotulo: "Operação (Mariucha)" },
+  { valor: "supervisao", rotulo: "Supervisão (Berg)" },
+  { valor: "admin", rotulo: "Admin (Paulo)" },
 ];
 
 const FORMAS = [
@@ -63,7 +62,6 @@ const COLUNAS_LINHAS: Column[] = [
 
 const COLUNAS_AUTORIZACOES: Column[] = [
   { key: "instancia", label: "Instância" },
-  { key: "responsavel", label: "Responsável" },
   { key: "situacao", label: "Situação" },
   { key: "origem", label: "Registro" },
   { key: "acao", label: "" },
@@ -334,25 +332,15 @@ function DialogExigirAutorizacao({
   const exigir = useExigirAutorizacao();
   const disponiveis = INSTANCIAS.filter((i) => !jaExigidas.includes(i.valor));
   const [instancia, setInstancia] = useState<string>("");
-  const [responsavel, setResponsavel] = useState("");
-
-  function escolher(valor: string) {
-    setInstancia(valor);
-    const achada = INSTANCIAS.find((i) => i.valor === valor);
-    if (achada && !responsavel) setResponsavel(achada.padrao);
-  }
 
   async function salvar() {
     if (!instancia) return onErro("Escolha a instância.");
-    if (!responsavel.trim()) return onErro("Informe quem deve autorizar.");
     try {
       await exigir.mutateAsync({
         ordemId: ordem.id,
         instancia: instancia as InstanciaAutorizacao,
-        responsavel: responsavel.trim(),
       });
       setInstancia("");
-      setResponsavel("");
       onFechar();
     } catch (causa) {
       onErro(mensagem(causa, "Não foi possível exigir a autorização."));
@@ -382,7 +370,7 @@ function DialogExigirAutorizacao({
       ) : (
         <div className="flex flex-col gap-2">
           <Field label="Instância">
-            <Select value={instancia} onChange={(e) => escolher(e.target.value)}>
+            <Select value={instancia} onChange={(e) => setInstancia(e.target.value)}>
               <option value="">Escolha...</option>
               {disponiveis.map((i) => (
                 <option key={i.valor} value={i.valor}>
@@ -390,12 +378,6 @@ function DialogExigirAutorizacao({
                 </option>
               ))}
             </Select>
-          </Field>
-          <Field
-            label="Quem autoriza"
-            hint="Berg autoriza pelo próprio acesso. Auditoria e diretoria são registradas pela gerência."
-          >
-            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
           </Field>
         </div>
       )}
@@ -711,7 +693,6 @@ export function OrdemDetalhe({
   async function decidirInstancia(
     instancia: InstanciaAutorizacao,
     decisao: "autorizada" | "recusada",
-    responsavel: string,
   ) {
     setErro(null);
     let observacao: string | undefined;
@@ -726,7 +707,6 @@ export function OrdemDetalhe({
         instancia,
         decisao,
         observacao,
-        responsavel,
       });
     } catch (causa) {
       setErro(mensagem(causa, "Não foi possível registrar a decisão."));
@@ -876,16 +856,15 @@ export function OrdemDetalhe({
               const rotulo = INSTANCIAS.find((i) => i.valor === a.instancia)?.rotulo ?? a.instancia;
               return {
                 instancia: rotulo,
-                responsavel: a.responsavel,
                 situacao:
                   a.decisao === "pendente"
                     ? "Pendente"
                     : a.decisao === "autorizada"
                       ? `Autorizada em ${formatarData(a.decidido_em)}`
                       : `Recusada — ${a.observacao ?? "sem motivo"}`,
-                origem: a.decidiu_no_sistema
+                origem: a.decidido_por
                   ? "Decidiu no sistema"
-                  : a.registrado_por_terceiro
+                  : a.registrado_por
                     ? "Registrada pela gerência"
                     : "—",
                 acao:
@@ -893,14 +872,14 @@ export function OrdemDetalhe({
                     <span className="flex gap-1">
                       <ClassicButton
                         onClick={() =>
-                          void decidirInstancia(a.instancia, "autorizada", a.responsavel)
+                          void decidirInstancia(a.instancia, "autorizada")
                         }
                       >
                         Autorizar
                       </ClassicButton>
                       <ClassicButton
                         onClick={() =>
-                          void decidirInstancia(a.instancia, "recusada", a.responsavel)
+                          void decidirInstancia(a.instancia, "recusada")
                         }
                       >
                         Recusar
