@@ -1,6 +1,6 @@
 # Mapa do banco
 
-Supabase/PostgreSQL. 14 migrations aplicadas (`db/migrations/0001` a `0014`).
+Supabase/PostgreSQL. 16 migrations aplicadas (`db/migrations/0001` a `0016`).
 Tudo com RLS ativa; escrita só por RPC `security definer`.
 
 ## Permissão
@@ -8,9 +8,14 @@ Tudo com RLS ativa; escrita só por RPC `security definer`.
 Três papéis no enum `app_role`: `admin` (Paulo, gestor), `operacao`
 (Mariucha) e `supervisao` (Berg).
 
-- `pode_operar(uuid)` — admin OU operação. Checagem da maioria das RPCs.
-- `pode_ver_financeiro(uuid)` — admin, operação OU supervisão. Só leitura:
-  Berg enxerga a ordem que vai autorizar, mas não apura, não lança e não paga.
+- `pode_operar(uuid)` — admin, operação E supervisão. Checagem da maioria
+  das RPCs. Desde a 0016 os três têm o mesmo acesso em contratos, ordens e
+  representantes, **inclusive pagar**. É a porta única do sistema, então
+  supervisão também alcança Prefeituras.
+- `pode_ver_financeiro(uuid)` — os mesmos três; sobrou da época em que
+  supervisão era só leitura.
+- **Exclusão definitiva continua só do admin** (`f_exigir_admin`): é
+  irreversível, e foi deixada de fora de propósito.
 - `f_tem_papel(uuid, text)` — um papel exato, comparado como texto.
 - `has_role(uuid, app_role)` / `f_exigir_admin()` — de migrations anteriores.
 
@@ -75,22 +80,27 @@ cálculo**, não recalcule no front), `v_contratos_incompletos`.
 
 | Tabela | Papel |
 | --- | --- |
-| `rubricas_pagamento` | as ~20 linhas do formulário real. Cada uma diz o `sinal` (+1 ou -1), se é `automatica`, se `gera_debito` e se `exige_contrato` |
+| `rubricas_pagamento` | as ~20 linhas do formulário real. Cada uma diz o `sinal` (+1 ou -1), se é `automatica`, se `gera_debito`, se `exige_contrato` e se é `unica_por_competencia` |
 | `ordem_pagamento_autorizacoes` | uma linha por instância exigida: gerência, supervisão, auditoria, diretoria |
 | `representante_debitos` | dívida do representante. `origem_item_id` liga ao lançamento que a criou |
 | `representante_debito_abatimentos` | abatimento, ligado ao contrato que descontou |
 | `meta_plus_faixas` | 10 → R$ 500, 15 → R$ 1.000, 20 → R$ 2.000. `valor_total` é o TOTAL da faixa, não incremento |
-| `ordens_pagamento` | uma por representante por competência |
+| `ordens_pagamento` | **diárias**, várias por representante no mês. Tem `data_ordem` própria; `competencia` é o mês dela |
 | `ordem_pagamento_itens` | itens discriminados; `valor_liquido` é coluna gerada |
 
 `ordem_pagamento_itens.tipo` **é** o código da rubrica (FK), não uma lista
 paralela. `valor_liquido` é gerado como `sinal * (bruto - desconto)`, então
 abatimento e estorno de fato subtraem.
 
-**RPCs:** `apurar_ordem_pagamento(representante, competência)` — **a fonte
-única do cálculo**, lança as rubricas automáticas e preserva as manuais;
-`apurar_competencia(data)` apura todos de uma vez;
-`adicionar_item_ordem` / `remover_item_ordem` (rubricas manuais);
+**A apuração automática não existe mais.** A 0015 removeu
+`apurar_ordem_pagamento` e `apurar_competencia`: elas despejavam incentivo e
+Meta Plus junto com os contratos, o que o gestor apontou como errado. A ordem
+nasce vazia e recebe o que for escolhido.
+
+**RPCs:** `pagamentos_disponiveis(representante, data)` — **a fonte única**
+do que ainda cabe pagar, já descontando o que saiu em outras ordens;
+`criar_ordem_pagamento`; `incluir_contratos_na_ordem`;
+`incluir_rubrica_mensal_na_ordem`; `adicionar_item_ordem` / `remover_item_ordem` (rubricas manuais);
 `exigir_autorizacao_ordem`, `remover_exigencia_autorizacao`,
 `decidir_autorizacao_ordem`; `definir_destinatario_ordem`,
 `limpar_destinatario_ordem`; `registrar_debito_representante`,
@@ -98,18 +108,17 @@ abatimento e estorno de fato subtraem.
 `pagar_ordem_pagamento`, `reabrir_ordem_pagamento`,
 `cancelar_ordem_pagamento`, `adicionar_ajuste_ordem`.
 
-**Quem faz o quê:** operação apura, lança e fecha. Supervisão autoriza a
-instância dela. **Só admin paga**, reabre e dispensa exigência. Pagar exige
-todas as autorizações exigidas concedidas, e grava forma, data, valor e
-comprovante.
+**Quem faz o quê:** os três montam, lançam, fecham, autorizam e pagam.
+Pagar exige todas as autorizações exigidas concedidas, e grava forma, data,
+valor e comprovante. Apagar em definitivo continua só do admin.
+
+**Trava do mês:** o trigger `f_rubrica_unica_no_mes` recusa um segundo
+incentivo ou uma segunda ajuda de custo fixa no mesmo mês, em qualquer ordem
+não cancelada.
 
 **Trava de duplicidade:** o trigger `f_item_sem_duplicidade` recusa um
 segundo lançamento do mesmo contrato na mesma rubrica, em qualquer ordem não
 cancelada, nomeando a ordem anterior na mensagem.
-
-Reapurar uma ordem **aberta** recalcula sem duplicar e preserva itens do tipo
-`ajuste`. Ordem `fechada` ou `paga` recusa reapuração — é o que protege
-pagamento já feito.
 
 **Views:** `v_ordens_pagamento` (com supervisor, contagem de autorizações,
 `liberada_para_pagamento` e os dados bancários efetivos),
@@ -119,6 +128,11 @@ pagamento já feito.
 na comissão de liderança o valor é do líder mas o contrato é de quem vendeu;
 é o que permite quebrar o relatório do líder por membro da equipe),
 `v_representante_debitos`, `v_representante_saldo_devedor`.
+
+**Sempre conceda `grant select` nas views que criar.** As migrations 0002 a
+0005 fazem isso; as do financeiro esqueceram, e a 0015 ainda derrubou e
+recriou `v_ordens_pagamento` — view recriada perde as permissões que tinha.
+A 0016 corrigiu. Não conte com a concessão automática do Supabase.
 
 Atenção ao campo `referencia` de `ordem_pagamento_itens`: na linha de
 incentivo ele guarda o **valor da carteira**, não um código de contrato. Use

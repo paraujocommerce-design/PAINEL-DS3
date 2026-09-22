@@ -88,8 +88,9 @@ técnico — quem usa é gestor e operação, não desenvolvedor.
 | Frente | Situação |
 | --- | --- |
 | Representantes | completo: cadastro, equipe, contratos, premiação |
-| Financeiro | completo: rubricas do formulário real, débito, autorização em quatro instâncias, pagamento registrado |
+| Financeiro | completo: ordens diárias com liberação por forma de pagamento, rubricas do formulário real, débito, autorização em quatro instâncias, pagamento registrado |
 | Relatório de pagamento | completo: documento do representante, com equipe inteira ou parcial para líderes |
+| Ordem em imagem | completa: PNG no formato do formulário impresso |
 | Prefeituras | funil de 9 etapas com RPCs e integridade no banco |
 | Importação | infraestrutura pronta, ligada só a Representantes |
 | Vendas Internas | tela vazia, sem backend |

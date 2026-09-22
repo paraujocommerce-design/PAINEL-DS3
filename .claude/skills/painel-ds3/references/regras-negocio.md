@@ -68,7 +68,18 @@ Vale para premiação do representante **e** para comissão do líder.
 
 ## Ordem de pagamento
 
-Documento interno, um por representante por competência (mês), no formato do
+**As ordens são diárias**, conforme a demanda dos representantes — várias por
+representante no mesmo mês. Cada uma paga só o que o gestor indicar: a ordem
+nasce vazia e ele escolhe entre o que está disponível.
+
+- **Contratos** — pagos conforme vão sendo vendidos, um a um ou em lote.
+- **Incentivo** — uma vez no mês, até o 10º dia útil, ou antes se sinalizado.
+  O sistema **avisa, não bloqueia** a data.
+- **Meta Plus** — por faixa atingida, não no fim do mês. Bateu 10 no dia 05,
+  tem direito no dia 05; fechou 15 depois, recebe a diferença.
+- **Ajuda de custo fixa** — uma vez no mês.
+
+Documento interno, no formato do
 formulário que a DS3 já usava no papel (modelo "BERG CALASANS — 3840 CLAUDIO
 CARDOSO"): cabeçalho com supervisor e representante, ~20 rubricas nomeadas,
 cada linha com data, valor e observação, e a conta de destino no rodapé.

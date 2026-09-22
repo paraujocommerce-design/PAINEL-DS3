@@ -51,9 +51,17 @@ permissão para o usuário `postgres`; use um diretório sob
 Falta o que o Supabase fornece, então antes das migrations aplique um prelúdio
 criando: os papéis `anon`, `authenticated`, `service_role`; as extensões
 `btree_gist` e `pgcrypto`; o schema `auth` com a tabela `auth.users`; e uma
-`auth.uid()` que leia uma variável de sessão — assim dá para simular cada
-perfil com `set test.user_id = '...'` e provar que o que deve ser recusado é
-recusado.
+`auth.uid()` que leia uma variável de sessão.
+
+O prelúdio precisa ainda de `grant usage on schema public/auth` e de
+`alter default privileges in schema public grant all on tables/functions to
+anon, authenticated, service_role` — sem isso o teste acusa "permission
+denied" onde a produção funciona, e você persegue um bug que não existe.
+
+Para testar RLS de verdade, é preciso deixar de ser superusuário: dentro de
+uma transação, `set local role authenticated` e `set local test.user_id`.
+Fora de transação o `SET LOCAL` é ignorado com um aviso fácil de não ver, e o
+teste passa sem ter testado nada.
 
 ## Conferir visualmente o que foi desenhado
 
@@ -69,6 +77,17 @@ dentro do projeto para achar `node_modules`.
 
 `playwright-core` entra só para isso e **sai com `bun remove` depois** — não
 deve ficar no `package.json`, senão a Vercel instala à toa.
+
+## Duas armadilhas que já custaram caro
+
+**`psql` confirma comando a comando.** Uma migration que falha no meio deixa
+o que já passou. Rode sempre com `-1` no teste local, e oriente o gestor a
+colar o arquivo inteiro de uma vez no SQL Editor.
+
+**View recriada perde as permissões.** `drop view` + `create view` volta sem
+`grant`, e a tela fica vazia sem dizer por quê. Toda migration que cria ou
+recria view precisa de `grant select ... to authenticated, service_role`,
+como as 0002 a 0005 já faziam.
 
 ## Regras de migration
 
