@@ -5,13 +5,13 @@
 -- o gestor abre um wizard que mostra:
 --   1. Contratos do representante ainda não lançados em nenhuma ordem
 --   2. Para cada um, se pós-venda está OK ou pendente
---   3. Se pendente, só permite adiantamento (marca como débito)
+--   3. Se pendente, só permite adiantamento (marca como debito)
 --   4. Campos de entrada pra todas as 20 rubricas com saldo calculado
---      em tempo real (contratos + histórico de pagamentos + débitos)
+--      em tempo real (contratos + histórico de pagamentos + debitos)
 --
 -- Esta migration:
 -- - Cria v_contratos_aguardando_pagamento
--- - Melhora v_representante_saldo_devedor com débitos por pós-venda
+-- - Melhora v_representante_saldo_devedor com debitos por pós-venda
 -- - Adiciona função para calcular o que cada representante deve/recebe
 -- =====================================================================
 
@@ -39,7 +39,7 @@ select
     when c.status_pos_venda <> 'ok'
       then coalesce(c.valor_premiacao, 0)
     else 0
-  end as valor_débito_pós_venda,
+  end as valor_debito_pós_venda,
   c.lider_id,
   case when c.lider_id is not null then true else false end as tem_lideranca,
   case
@@ -60,7 +60,7 @@ where c.cancelado_em is null
 
 -- =====================================================================
 -- Saldo do representante: o que deve vs o que pode receber
--- Integra contratos aguardando + débitos por pós-venda + histórico
+-- Integra contratos aguardando + debitos por pós-venda + histórico
 -- =====================================================================
 create or replace view public.v_saldo_representante_detalhado
 with (security_invoker = on) as
@@ -68,24 +68,23 @@ select
   r.id,
   r.codigo,
   r.nome,
-  coalesce(sum(case when cag.pos_venda_pendente then cag.valor_débito_pós_venda else 0 end), 0)
-    as débito_pós_venda_pendente,
-  coalesce(sum(case when not cag.pos_venda_pendente and cag.premiavel then cag.valor_disponível_premiacao else 0 end), 0)
-    as crédito_contratos_aguardando,
+  coalesce(sum(case when cag.pos_venda_pendente then cag.valor_debito_pós_venda else 0 end), 0)
+    as debito_pós_venda_pendente,
+  coalesce(sum(case when not cag.pos_venda_pendente and cag.premiavel then cag.valor_disponivel_premiacao else 0 end), 0)
+    as credito_contratos_aguardando,
   coalesce(sd.saldo_devedor, 0) as saldo_devedor_existente,
-  coalesce(sum(case when not cag.pos_venda_pendente and cag.premiavel then cag.valor_disponível_premiacao else 0 end), 0)
+  coalesce(sum(case when not cag.pos_venda_pendente and cag.premiavel then cag.valor_disponivel_premiacao else 0 end), 0)
     - coalesce(sd.saldo_devedor, 0) as saldo_a_receber
 from public.representantes r
 left join public.v_contratos_aguardando_pagamento cag on cag.representante_id = r.id
 left join public.v_representante_saldo_devedor sd on sd.representante_id = r.id
-where r.cancelado_em is null
 group by r.id, r.codigo, r.nome, sd.saldo_devedor;
 
 -- =====================================================================
--- Função para registrar débito por pós-venda pendente
+-- Função para registrar debito por pós-venda pendente
 -- Chamada quando um contrato com pós-venda pendente entra em ordem
 -- =====================================================================
-create or replace function public.registrar_débito_pós_venda(
+create or replace function public.registrar_debito_pós_venda(
   p_contrato_id uuid,
   p_motivo text default null
 )
@@ -113,7 +112,7 @@ begin
   end if;
 
   if v_status = 'ok' then
-    raise exception 'Contrato com pós-venda OK não gera débito.';
+    raise exception 'Contrato com pós-venda OK não gera debito.';
   end if;
 
   if v_valor > 0 then
@@ -135,5 +134,5 @@ grant select on
 to authenticated, service_role;
 
 grant execute on function
-  public.registrar_débito_pós_venda(uuid, text)
+  public.registrar_debito_pós_venda(uuid, text)
 to authenticated;
