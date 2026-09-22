@@ -233,7 +233,14 @@ export function desenharOrdem(dados: DadosOrdemImagem): HTMLCanvasElement {
   return canvas;
 }
 
-/** Salva o canvas como PNG. */
+/**
+ * Salva o canvas como PNG.
+ *
+ * O link precisa estar no documento para o clique valer em todo navegador,
+ * e o endereço temporário só pode ser liberado depois que o download
+ * começou — liberar na linha seguinte ao clique cancela o próprio
+ * download em parte dos navegadores.
+ */
 export function baixarPng(canvas: HTMLCanvasElement, nome: string): void {
   canvas.toBlob((blob) => {
     if (!blob) return;
@@ -241,7 +248,10 @@ export function baixarPng(canvas: HTMLCanvasElement, nome: string): void {
     const link = document.createElement("a");
     link.href = url;
     link.download = nome;
+    link.rel = "noopener";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, "image/png");
 }

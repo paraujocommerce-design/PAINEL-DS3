@@ -4,9 +4,9 @@ import { useAuth } from "@/lib/auth";
 
 /**
  * Papel do usuário logado.
- * Só o administrador pode excluir registros em definitivo e efetivar
- * pagamento — a operação trabalha com cancelamento rastreável e prepara
- * a ordem, mas não a paga. A supervisão só autoriza a instância dela.
+ * Gerência, operação e supervisão têm o mesmo acesso em contratos, ordens
+ * de pagamento e representantes. O que continua exclusivo da gerência é a
+ * exclusão definitiva, que não tem volta.
  */
 export function usePapelUsuario() {
   const { session } = useAuth();
@@ -32,6 +32,8 @@ export function usePapelUsuario() {
     ehAdmin: papeis.includes("admin"),
     ehOperacao: papeis.includes("operacao"),
     ehSupervisao: papeis.includes("supervisao"),
+    podeOperar:
+      papeis.includes("admin") || papeis.includes("operacao") || papeis.includes("supervisao"),
     carregando: consulta.isLoading,
   };
 }

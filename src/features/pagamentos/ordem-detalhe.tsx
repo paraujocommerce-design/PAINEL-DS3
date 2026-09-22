@@ -672,7 +672,7 @@ export function OrdemDetalhe({
   onRelatorio: () => void;
   onImagem: () => void;
 }) {
-  const { ehAdmin } = usePapelUsuario();
+  const { podeOperar } = usePapelUsuario();
   const linhas = useLinhasOrdem(ordem.id);
   const autorizacoes = useAutorizacoes(ordem.id);
   const acao = useAcaoOrdem();
@@ -760,7 +760,7 @@ export function OrdemDetalhe({
             <ClassicButton onClick={() => setDialogo("autorizacao")}>
               Exigir autorização
             </ClassicButton>
-            {ehAdmin ? (
+            {podeOperar ? (
               <>
                 <ClassicButton onClick={() => void executar("reabrir")}>Reabrir</ClassicButton>
                 <ClassicButton
@@ -906,7 +906,7 @@ export function OrdemDetalhe({
                         Recusar
                       </ClassicButton>
                     </span>
-                  ) : a.decisao === "pendente" && aberta && ehAdmin ? (
+                  ) : a.decisao === "pendente" && aberta && podeOperar ? (
                     <ClassicButton
                       onClick={() => {
                         setErro(null);
