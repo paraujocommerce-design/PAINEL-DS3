@@ -745,3 +745,17 @@ export function useRegistrarDebito() {
     onSuccess: () => void invalidar(),
   });
 }
+
+export function useReabrirOrdem() {
+  const acaoOrdem = useAcaoOrdem();
+  return useMutation({
+    mutationFn: async (entrada: { ordem_id: string; motivo: string }) => {
+      return acaoOrdem.mutateAsync({
+        ordemId: entrada.ordem_id,
+        acao: "reabrir",
+        motivo: entrada.motivo,
+      });
+    },
+    onSuccess: acaoOrdem.onSuccess,
+  });
+}

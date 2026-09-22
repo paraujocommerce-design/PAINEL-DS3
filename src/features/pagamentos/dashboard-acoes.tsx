@@ -1,11 +1,10 @@
+import { useState } from "react";
 import {
-  Alert,
   ClassicButton,
   EmptyState,
   LoadingState,
   Panel,
   Toolbar,
-  IndicatorSlot,
   Window,
 } from "@/components/w2k";
 import { usePapelUsuario } from "@/lib/papel-usuario";
@@ -14,6 +13,8 @@ import {
   useOrdensProntasParaPagar,
   useOrdensAbertasOperacao,
 } from "./api";
+import type { OrdemPagamento } from "./api";
+import { SlidePanelDetalheOrdem } from "./slide-panel-detalhe-ordem";
 
 function moeda(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -22,6 +23,16 @@ function moeda(valor: number): string {
 function formatarData(iso: string): string {
   const [ano, mes, dia] = iso.split("-");
   return `${dia}/${mes}`;
+}
+
+interface AcaoItem {
+  id: string;
+  representante_codigo: string;
+  representante_nome: string;
+  data_ordem: string;
+  total_valor: number;
+  status: string;
+  ordem: OrdemPagamento;
 }
 
 export function DashboardAcoes({
@@ -34,186 +45,158 @@ export function DashboardAcoes({
   const ordensParaPagar = useOrdensProntasParaPagar();
   const ordensAbertas = useOrdensAbertasOperacao();
 
+  const [panelAberto, setPanelAberto] = useState(false);
+  const [ordemSelecionada, setOrdemSelecionada] = useState<OrdemPagamento | null>(
+    null
+  );
+
   if (!papel || papel.carregando) return <LoadingState />;
 
-  return (
-    <Window title="Próximas ações" className="h-full">
-      {papel.ehSupervisao && (
-        <div className="flex flex-col gap-3">
-          <Toolbar>
-            <h2 className="text-sm font-bold">
-              {autPendentes.data?.length ?? 0} autorização(ões) pendente(s)
-            </h2>
-          </Toolbar>
-          <Panel>
-            {autPendentes.isLoading ? (
-              <LoadingState />
-            ) : (autPendentes.data ?? []).length === 0 ? (
-              <EmptyState
-                title="Nenhuma ordem esperando sua autorização."
-                description="Todas as ordens fechadas já foram autorizadas ou recusadas."
-              />
-            ) : (
-              <div className="space-y-2">
-                {(autPendentes.data ?? []).map((a) => (
-                  <div
-                    key={a.ordem_id}
-                    className="border rounded p-3 hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer"
-                    onClick={() => onAbrirOrdem(a.ordem_id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-bold text-sm">
-                          {a.representante_codigo} — {a.representante_nome}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatarData(a.data_ordem)} • {a.total_itens} itens
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold">
-                          {moeda(a.total_valor)}
-                        </div>
-                        <ClassicButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onAbrirOrdem(a.ordem_id);
-                          }}
-                        >
-                          Autorizar
-                        </ClassicButton>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Panel>
-        </div>
-      )}
+  // Mapear dados para formato uniforme
+  let acoes: AcaoItem[] = [];
+  let titulo = "";
+  let descricao = "";
 
-      {papel.ehAdmin && (
-        <div className="flex flex-col gap-3">
-          <Toolbar>
-            <h2 className="text-sm font-bold">
-              {ordensParaPagar.data?.filter((o) => o.pode_pagar).length ?? 0} ordem(ns) pronta(s)
-            </h2>
-          </Toolbar>
-          <Panel>
-            {ordensParaPagar.isLoading ? (
-              <LoadingState />
-            ) : (ordensParaPagar.data ?? []).length === 0 ? (
-              <EmptyState
-                title="Nenhuma ordem pronta para pagamento."
-                description="Todas as ordens estão abertas ou precisam de autorização."
-              />
-            ) : (
+  if (papel.ehSupervisao && autPendentes.data) {
+    titulo = `${autPendentes.data.length} autorização(ões) esperando`;
+    descricao = "Ordens fechadas que precisam de sua autorização";
+    acoes = autPendentes.data.map((a) => ({
+      id: a.ordem_id,
+      representante_codigo: a.representante_codigo,
+      representante_nome: a.representante_nome,
+      data_ordem: a.data_ordem,
+      total_valor: a.total_valor,
+      status: "aguardando autorização",
+      ordem: a as any,
+    }));
+  } else if (papel.ehAdmin && ordensParaPagar.data) {
+    titulo = `${ordensParaPagar.data.filter((o) => o.pode_pagar).length} ordem(ns) pronta(s)`;
+    descricao = "Ordens com todas as autorizações, prontas para pagar";
+    acoes = ordensParaPagar.data
+      .filter((o) => o.pode_pagar)
+      .map((o) => ({
+        id: o.id,
+        representante_codigo: o.representante_codigo,
+        representante_nome: o.representante_nome,
+        data_ordem: o.data_ordem,
+        total_valor: o.total_valor,
+        status: "pronta para pagamento",
+        ordem: o as any,
+      }));
+  } else if (papel.ehOperacao && ordensAbertas.data) {
+    titulo = `${ordensAbertas.data.length} ordem(ns) em andamento`;
+    descricao = "Ordens abertas que você está montando";
+    acoes = ordensAbertas.data.map((o) => ({
+      id: o.id,
+      representante_codigo: o.representante_codigo,
+      representante_nome: o.representante_nome,
+      data_ordem: o.data_ordem,
+      total_valor: o.total_valor,
+      status: `${o.autorizacoes_pendentes}/${o.autorizacoes_exigidas} autorizações pendentes`,
+      ordem: o as any,
+    }));
+  }
+
+  // Ordenar por antigüidade (mais antigo primeiro)
+  acoes.sort(
+    (a, b) =>
+      new Date(a.data_ordem).getTime() - new Date(b.data_ordem).getTime()
+  );
+
+  const handleAbrirPainel = (ordem: OrdemPagamento) => {
+    setOrdemSelecionada(ordem);
+    setPanelAberto(true);
+  };
+
+  const loading =
+    autPendentes.isLoading || ordensParaPagar.isLoading || ordensAbertas.isLoading;
+
+  return (
+    <>
+      <Window title="Central de Ações" className="h-full">
+        <Toolbar>
+          <h2 className="text-sm font-bold">{titulo}</h2>
+        </Toolbar>
+
+        <Panel>
+          {loading ? (
+            <LoadingState />
+          ) : acoes.length === 0 ? (
+            <EmptyState
+              title="Nenhuma ação pendente"
+              description={descricao}
+            />
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground mb-4">{descricao}</p>
               <div className="space-y-2">
-                {(ordensParaPagar.data ?? []).map((o) => (
+                {acoes.map((acao) => (
                   <div
-                    key={o.id}
-                    className={`border rounded p-3 cursor-pointer ${
-                      o.pode_pagar
-                        ? "hover:bg-green-50 dark:hover:bg-green-900/20"
-                        : "opacity-50"
-                    }`}
-                    onClick={() => onAbrirOrdem(o.id)}
+                    key={acao.id}
+                    className="border rounded p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition"
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex-1 min-w-0">
                         <div className="font-bold text-sm">
-                          {o.representante_codigo} — {o.representante_nome}
+                          {acao.representante_codigo} — {acao.representante_nome}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatarData(o.data_ordem)} • {o.total_itens} itens
-                        </div>
-                        <div className="text-xs text-yellow-600">
-                          {o.situacao}
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {formatarData(acao.data_ordem)} • {acao.status}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold">
-                          {moeda(o.total_valor)}
+                      <div className="text-right shrink-0">
+                        <div className="font-bold text-base">
+                          {moeda(acao.total_valor)}
                         </div>
-                        {o.pode_pagar && (
+                        <div className="flex gap-1 mt-2">
                           <ClassicButton
                             variant="primary"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onAbrirOrdem(o.id);
+                              if (papel.ehSupervisao) {
+                                onAbrirOrdem(acao.id);
+                              } else if (papel.ehAdmin) {
+                                onAbrirOrdem(acao.id);
+                              } else {
+                                handleAbrirPainel(acao.ordem);
+                              }
                             }}
                           >
-                            Pagar
+                            {papel.ehSupervisao
+                              ? "Autorizar"
+                              : papel.ehAdmin
+                                ? "Pagar"
+                                : "Editar"}
                           </ClassicButton>
-                        )}
+                          <ClassicButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAbrirPainel(acao.ordem);
+                            }}
+                          >
+                            Revisar
+                          </ClassicButton>
+                        </div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </Panel>
-        </div>
-      )}
+            </>
+          )}
+        </Panel>
+      </Window>
 
-      {papel.ehOperacao && (
-        <div className="flex flex-col gap-3">
-          <Toolbar>
-            <h2 className="text-sm font-bold">
-              {ordensAbertas.data?.length ?? 0} ordem(ns) em andamento
-            </h2>
-          </Toolbar>
-          <Panel>
-            {ordensAbertas.isLoading ? (
-              <LoadingState />
-            ) : (ordensAbertas.data ?? []).length === 0 ? (
-              <EmptyState
-                title="Nenhuma ordem aberta."
-                description="Todas as ordens foram fechadas ou canceladas."
-              />
-            ) : (
-              <div className="space-y-2">
-                {(ordensAbertas.data ?? []).map((o) => (
-                  <div
-                    key={o.id}
-                    className="border rounded p-3 hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer"
-                    onClick={() => onAbrirOrdem(o.id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-bold text-sm">
-                          {o.representante_codigo} — {o.representante_nome}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatarData(o.data_ordem)} • {o.total_itens} itens
-                        </div>
-                        {o.autorizacoes_exigidas > 0 && (
-                          <div className="text-xs text-blue-600">
-                            {o.autorizacoes_pendentes}/{o.autorizacoes_exigidas} autorizações pendentes
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold">
-                          {moeda(o.total_valor)}
-                        </div>
-                        <ClassicButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onAbrirOrdem(o.id);
-                          }}
-                        >
-                          Editar
-                        </ClassicButton>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Panel>
-        </div>
-      )}
-    </Window>
+      <SlidePanelDetalheOrdem
+        isOpen={panelAberto}
+        onClose={() => setPanelAberto(false)}
+        ordem={ordemSelecionada}
+        onRefresh={() => {
+          autPendentes.refetch();
+          ordensParaPagar.refetch();
+          ordensAbertas.refetch();
+        }}
+      />
+    </>
   );
 }
