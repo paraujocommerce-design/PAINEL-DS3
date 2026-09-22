@@ -75,16 +75,15 @@ export type Rubrica = {
   exige_contrato: boolean;
 };
 
-export type InstanciaAutorizacao = "gerencia" | "supervisao" | "auditoria" | "diretoria";
+export type InstanciaAutorizacao = "operacao" | "supervisao" | "admin";
 
 export type Autorizacao = {
   id: string;
   instancia: InstanciaAutorizacao;
-  responsavel: string;
   decisao: "pendente" | "autorizada" | "recusada";
   decidido_em: string | null;
-  decidiu_no_sistema: boolean;
-  registrado_por_terceiro: boolean;
+  decidido_por: string | null;
+  registrado_por: string | null;
   observacao: string | null;
 };
 
@@ -242,7 +241,7 @@ export function useAutorizacoes(ordemId?: string) {
       const { data, error } = await cliente()
         .from("ordem_pagamento_autorizacoes")
         .select(
-          "id, instancia, responsavel, decisao, decidido_em, decidido_por, registrado_por, observacao",
+          "id, instancia, decisao, decidido_em, decidido_por, registrado_por, observacao",
         )
         .eq("ordem_id", ordemId!)
         .order("instancia");
@@ -250,11 +249,10 @@ export function useAutorizacoes(ordemId?: string) {
       return ((data ?? []) as Record<string, unknown>[]).map((linha) => ({
         id: String(linha["id"]),
         instancia: linha["instancia"] as InstanciaAutorizacao,
-        responsavel: String(linha["responsavel"]),
         decisao: linha["decisao"] as Autorizacao["decisao"],
         decidido_em: texto(linha["decidido_em"]),
-        decidiu_no_sistema: linha["decidido_por"] !== null,
-        registrado_por_terceiro: linha["registrado_por"] !== null,
+        decidido_por: texto(linha["decidido_por"]),
+        registrado_por: texto(linha["registrado_por"]),
         observacao: texto(linha["observacao"]),
       }));
     },
@@ -543,12 +541,10 @@ export function useExigirAutorizacao() {
     mutationFn: async (entrada: {
       ordemId: string;
       instancia: InstanciaAutorizacao;
-      responsavel: string;
     }) => {
       const { error } = await cliente().rpc("exigir_autorizacao_ordem", {
         p_ordem_id: entrada.ordemId,
         p_instancia: entrada.instancia,
-        p_responsavel: entrada.responsavel,
       });
       if (error) throw new Error(error.message);
     },
@@ -578,14 +574,12 @@ export function useDecidirAutorizacao() {
       instancia: InstanciaAutorizacao;
       decisao: "autorizada" | "recusada";
       observacao?: string | undefined;
-      responsavel?: string | undefined;
     }) => {
       const { error } = await cliente().rpc("decidir_autorizacao_ordem", {
         p_ordem_id: entrada.ordemId,
         p_instancia: entrada.instancia,
         p_decisao: entrada.decisao,
         p_observacao: entrada.observacao ?? null,
-        p_responsavel: entrada.responsavel ?? null,
       });
       if (error) throw new Error(error.message);
     },
