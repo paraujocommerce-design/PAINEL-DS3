@@ -4,26 +4,30 @@ import { KanbanLeads } from "./kanban-leads";
 import { DashboardIndicadores } from "./dashboard-indicadores";
 import { MetasProspecao } from "./metas-prospecao";
 import { PainelDepartamento } from "./painel-departamento";
+import { Relatorios } from "./relatorios";
 
 export function CertificadoDigitalModule() {
-  const [aba, setAba] = useState<"kanban" | "indicadores" | "metas" | "departamento">("kanban");
+  const [aba, setAba] = useState<"kanban" | "indicadores" | "metas" | "departamento" | "relatorios">("kanban");
 
   return (
     <>
       <Toolbar>
         <h1 className="text-lg font-bold">Certificado Digital</h1>
-        <div className="flex gap-2 ml-auto">
+        <div className="flex gap-2 ml-auto flex-wrap">
           <ClassicButton variant={aba === "kanban" ? "primary" : "default"} onClick={() => setAba("kanban")}>
-            Kanban de Leads
+            Kanban
           </ClassicButton>
           <ClassicButton variant={aba === "indicadores" ? "primary" : "default"} onClick={() => setAba("indicadores")}>
-            Indicadores Diários
+            Indicadores
           </ClassicButton>
           <ClassicButton variant={aba === "metas" ? "primary" : "default"} onClick={() => setAba("metas")}>
-            Metas de Prospecção
+            Metas
           </ClassicButton>
           <ClassicButton variant={aba === "departamento" ? "primary" : "default"} onClick={() => setAba("departamento")}>
-            Painel Departamental
+            Departamento
+          </ClassicButton>
+          <ClassicButton variant={aba === "relatorios" ? "primary" : "default"} onClick={() => setAba("relatorios")}>
+            Relatórios
           </ClassicButton>
         </div>
       </Toolbar>
@@ -33,6 +37,7 @@ export function CertificadoDigitalModule() {
         {aba === "indicadores" && <DashboardIndicadores />}
         {aba === "metas" && <MetasProspecao />}
         {aba === "departamento" && <PainelDepartamento />}
+        {aba === "relatorios" && <Relatorios />}
       </Panel>
     </>
   );
