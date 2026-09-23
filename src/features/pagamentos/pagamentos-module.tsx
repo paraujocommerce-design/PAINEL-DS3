@@ -16,6 +16,7 @@ import { OrdemDetalhe } from "./ordem-detalhe";
 import { OrdemImagem } from "./ordem-imagem";
 import { RelatorioPagamento } from "./relatorio";
 import { WizardNovaOrdem } from "./wizard-nova-ordem";
+import { SaldoRepresentante } from "./saldo-representante";
 
 function formatarData(iso: string): string {
   const [ano, mes, dia] = iso.split("-");
@@ -30,13 +31,14 @@ function periodoAtual(): string {
 }
 
 export function PagamentosModule() {
-  const [aba, setAba] = useState<"acoes" | "contratos" | "ordens">("acoes");
+  const [aba, setAba] = useState<"acoes" | "contratos" | "ordens" | "saldo">("acoes");
   const [representanteId, setRepresentanteId] = useState("");
   const [competencia, setCompetencia] = useState(periodoAtual());
   const [wizard, setWizard] = useState(false);
   const [ordemAbertaId, setOrdemAbertaId] = useState<string | null>(null);
   const [verImagem, setVerImagem] = useState(false);
   const [verRelatorio, setVerRelatorio] = useState(false);
+  const [saldoRepresentanteId, setSaldoRepresentanteId] = useState("");
 
   const representantes = useRepresentantes();
   const contratos = useContratosAguardando(representanteId);
@@ -108,6 +110,12 @@ export function PagamentosModule() {
             onClick={() => setAba("ordens")}
           >
             Ordens criadas
+          </ClassicButton>
+          <ClassicButton
+            variant={aba === "saldo" ? "primary" : "default"}
+            onClick={() => setAba("saldo")}
+          >
+            Meu Saldo
           </ClassicButton>
         </div>
       </Toolbar>
@@ -215,7 +223,32 @@ export function PagamentosModule() {
               </div>
             )}
           </>
-        )}
+        ) : aba === "saldo" ? (
+          <>
+            <div className="mb-3 flex gap-2">
+              <select
+                value={saldoRepresentanteId}
+                onChange={(e) => setSaldoRepresentanteId(e.target.value)}
+                className="rounded border px-2 py-1 text-sm"
+              >
+                <option value="">Selecione um representante</option>
+                {(representantes.data ?? []).map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.codigo} — {r.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {saldoRepresentanteId ? (
+              <SaldoRepresentante representanteId={saldoRepresentanteId} />
+            ) : (
+              <EmptyState
+                title="Selecione um representante"
+                description="Escolha um representante para ver o saldo"
+              />
+            )}
+          </>
+        ) : null}
       </Panel>
 
       <WizardNovaOrdem
