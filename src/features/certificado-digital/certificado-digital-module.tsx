@@ -3,9 +3,10 @@ import { ClassicButton, Panel, Toolbar, Window } from "@/components/w2k";
 import { KanbanLeads } from "./kanban-leads";
 import { DashboardIndicadores } from "./dashboard-indicadores";
 import { MetasProspecao } from "./metas-prospecao";
+import { PainelDepartamento } from "./painel-departamento";
 
 export function CertificadoDigitalModule() {
-  const [aba, setAba] = useState<"kanban" | "indicadores" | "metas">("kanban");
+  const [aba, setAba] = useState<"kanban" | "indicadores" | "metas" | "departamento">("kanban");
 
   return (
     <>
@@ -21,6 +22,9 @@ export function CertificadoDigitalModule() {
           <ClassicButton variant={aba === "metas" ? "primary" : "default"} onClick={() => setAba("metas")}>
             Metas de Prospecção
           </ClassicButton>
+          <ClassicButton variant={aba === "departamento" ? "primary" : "default"} onClick={() => setAba("departamento")}>
+            Painel Departamental
+          </ClassicButton>
         </div>
       </Toolbar>
 
@@ -28,6 +32,7 @@ export function CertificadoDigitalModule() {
         {aba === "kanban" && <KanbanLeads />}
         {aba === "indicadores" && <DashboardIndicadores />}
         {aba === "metas" && <MetasProspecao />}
+        {aba === "departamento" && <PainelDepartamento />}
       </Panel>
     </>
   );
