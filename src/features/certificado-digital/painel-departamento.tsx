@@ -1,5 +1,5 @@
 import { LoadingState, Panel, Toolbar, Window } from "@/components/w2k";
-import { usePainelDepartamento, useMetaMensalAtual } from "./api-completo";
+import { usePainelDepartamento, useMetaMensalAtual } from "./api";
 
 export function PainelDepartamento() {
   const painel = usePainelDepartamento();

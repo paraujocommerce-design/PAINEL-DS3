@@ -153,3 +153,52 @@ export function useRegistrarVendaSerasa() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["certificado", "serasa"] }),
   });
 }
+
+export type PainelDepartamento = {
+  usuario_id: string;
+  nome_completo: string;
+  apelido: string;
+  tipo_operador: string;
+  novo_lead_total: number;
+  contato_realizado_total: number;
+  qualificado_total: number;
+  negociacao_total: number;
+  convertido_total: number;
+  perdido_total: number;
+  indicadores_hoje: number;
+};
+
+export type MetaMensal = {
+  meta_mensal_geral: number;
+  meta_serasa_minimo: number;
+  meta_serasa_maximo: number;
+  convertidos_mes: number;
+  serasa_mes: number;
+};
+
+export function usePainelDepartamento() {
+  return useQuery({
+    queryKey: ["certificado", "painel"],
+    queryFn: async () => {
+      const { data, error } = await cliente()
+        .from("v_certificado_painel_departamento")
+        .select("*");
+      if (error) throw new Error(error.message);
+      return (data ?? []) as PainelDepartamento[];
+    },
+  });
+}
+
+export function useMetaMensalAtual() {
+  return useQuery({
+    queryKey: ["certificado", "meta"],
+    queryFn: async () => {
+      const { data, error } = await cliente()
+        .from("v_certificado_meta_mensal_atual")
+        .select("*")
+        .single();
+      if (error) throw new Error(error.message);
+      return data as MetaMensal;
+    },
+  });
+}
