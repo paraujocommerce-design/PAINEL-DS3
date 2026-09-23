@@ -99,8 +99,8 @@ export function useCriarOrdemCompleta() {
             "adicionar_item_ordem",
             {
               p_ordem_id: ordemId,
-              p_tipo: rubrica,
-              p_valor_bruto: valor,
+              p_rubrica: rubrica,
+              p_valor: valor,
             }
           );
           if (erroRubrica) throw new Error(erroRubrica.message);
