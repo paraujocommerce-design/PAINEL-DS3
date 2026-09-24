@@ -156,8 +156,8 @@ export function DialogGerarContrato({ open, onClose }: { open: boolean; onClose:
   const [vencimento, setVencimento] = useState("10");
   const [dataContrato, setDataContrato] = useState(hojeISO());
 
-  // Produtos selecionados
-  const [produtos, setProdutos] = useState<ProdutoSelecionado[]>([]);
+  // Produtos selecionados (com estado de seleção e quantidade)
+  const [produtosSelecionados, setProdutosSelecionados] = useState<Record<number, { selecionado: boolean; quantidade: number }>>({});
   const [erro, setErro] = useState<string | null>(null);
 
   function fechar() {
@@ -185,32 +185,12 @@ export function DialogGerarContrato({ open, onClose }: { open: boolean; onClose:
     setPlanoMensal("");
     setVencimento("10");
     setDataContrato(hojeISO());
-    setProdutos([]);
+    setProdutosSelecionados({});
     setErro(null);
     salvar.reset();
     onClose();
   }
 
-  function adicionarProduto(opcao: number) {
-    const prod = PRODUTOS.find((p) => p.opcao === opcao);
-    if (!prod) return;
-
-    const existe = produtos.findIndex((p) => p.opcao === opcao);
-    if (existe >= 0) {
-      const novo = [...produtos];
-      novo[existe].quantidade += 1;
-      setProdutos(novo);
-    } else {
-      setProdutos([
-        ...produtos,
-        { opcao, descricao: prod.descricao, valor: prod.valor, quantidade: 1 },
-      ]);
-    }
-  }
-
-  function removerProduto(opcao: number) {
-    setProdutos(produtos.filter((p) => p.opcao !== opcao));
-  }
 
   async function enviar(event: FormEvent) {
     event.preventDefault();
@@ -234,6 +214,19 @@ export function DialogGerarContrato({ open, onClose }: { open: boolean; onClose:
       return setErro("Plano mensal deve ser um valor válido maior que zero.");
 
     try {
+      // Construir array de produtos selecionados
+      const produtosParaGerar = Object.entries(produtosSelecionados)
+        .filter(([, p]) => p.selecionado)
+        .map(([opcao, p]) => {
+          const prod = PRODUTOS.find((pr) => pr.opcao === Number(opcao));
+          return {
+            opcao: Number(opcao),
+            descricao: prod?.descricao || "",
+            valor: prod?.valor || 0,
+            quantidade: p.quantidade,
+          };
+        });
+
       // Gerar PDF
       const pdfBlob = await gerarPDFContrato({
         razaoSocial,
@@ -259,7 +252,7 @@ export function DialogGerarContrato({ open, onClose }: { open: boolean; onClose:
         planoMensal: plano,
         vencimento,
         dataContrato,
-        produtos,
+        produtos: produtosParaGerar,
       });
 
       // Salvar no Supabase
@@ -460,45 +453,71 @@ export function DialogGerarContrato({ open, onClose }: { open: boolean; onClose:
         {/* Seção: Produtos/Serviços */}
         <fieldset className="border rounded p-3">
           <legend className="font-bold text-sm">Produtos/Serviços Contratados</legend>
-          <div className="mt-3 space-y-2">
-            <div className="flex flex-wrap gap-1">
-              {PRODUTOS.map((prod) => (
-                <ClassicButton
-                  key={prod.opcao}
-                  onClick={() => adicionarProduto(prod.opcao)}
-                  variant="default"
-                  className="text-xs"
-                >
-                  Op. {prod.opcao}
-                </ClassicButton>
-              ))}
-            </div>
-
-            {produtos.length > 0 && (
-              <div className="mt-4">
-                <Table
-                  columns={colunasProdutos}
-                  caption="Produtos selecionados"
-                  rows={produtos.map((p) => ({
-                    opcao: `${p.opcao}`,
-                    descricao: p.descricao,
-                    valor: `R$ ${p.valor.toFixed(2)}`,
-                    quantidade: `${p.quantidade}`,
-                    subtotal: `R$ ${(p.valor * p.quantidade).toFixed(2)}`,
-                    remover: (
-                      <ClassicButton
-                        onClick={() => removerProduto(p.opcao)}
-                        variant="default"
-                        className="text-xs"
-                      >
-                        Remover
-                      </ClassicButton>
-                    ),
-                  }))}
-                />
-                <div className="mt-2 text-right font-bold">
-                  Total produtos: R$ {totalProdutos.toFixed(2)}
+          <div className="mt-3 space-y-3">
+            {PRODUTOS.map((prod) => (
+              <div key={prod.opcao} className="flex gap-3 items-end border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id={`prod-${prod.opcao}`}
+                    checked={produtosSelecionados[prod.opcao]?.selecionado || false}
+                    onChange={(e) =>
+                      setProdutosSelecionados({
+                        ...produtosSelecionados,
+                        [prod.opcao]: {
+                          selecionado: e.target.checked,
+                          quantidade: produtosSelecionados[prod.opcao]?.quantidade || 1,
+                        },
+                      })
+                    }
+                  />
+                  <label htmlFor={`prod-${prod.opcao}`} className="text-xs font-bold cursor-pointer">
+                    Op. {prod.opcao}
+                  </label>
                 </div>
+                <div className="flex-1">
+                  <div className="text-xs text-muted-foreground">{prod.descricao}</div>
+                  <div className="text-xs font-bold">R$ {prod.valor.toFixed(2)}</div>
+                </div>
+                {produtosSelecionados[prod.opcao]?.selecionado && (
+                  <div className="flex gap-2 items-center">
+                    <label htmlFor={`qty-${prod.opcao}`} className="text-xs">
+                      Qtd:
+                    </label>
+                    <input
+                      id={`qty-${prod.opcao}`}
+                      type="number"
+                      min="1"
+                      value={produtosSelecionados[prod.opcao]?.quantidade || 1}
+                      onChange={(e) =>
+                        setProdutosSelecionados({
+                          ...produtosSelecionados,
+                          [prod.opcao]: {
+                            selecionado: true,
+                            quantidade: Math.max(1, parseInt(e.target.value) || 1),
+                          },
+                        })
+                      }
+                      className="border rounded px-2 py-1 w-16 text-xs"
+                    />
+                    <span className="text-xs font-bold whitespace-nowrap">
+                      R$ {(prod.valor * (produtosSelecionados[prod.opcao]?.quantidade || 1)).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {Object.values(produtosSelecionados).some((p) => p.selecionado) && (
+              <div className="mt-4 pt-3 border-t font-bold text-right">
+                Total produtos: R${" "}
+                {Object.entries(produtosSelecionados)
+                  .filter(([, p]) => p.selecionado)
+                  .reduce((sum, [opcao, p]) => {
+                    const prod = PRODUTOS.find((pr) => pr.opcao === Number(opcao));
+                    return sum + (prod?.valor || 0) * p.quantidade;
+                  }, 0)
+                  .toFixed(2)}
               </div>
             )}
           </div>
