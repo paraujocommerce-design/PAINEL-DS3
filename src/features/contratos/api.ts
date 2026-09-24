@@ -200,6 +200,43 @@ export function useExcluirContrato() {
   });
 }
 
+/** Salvar contrato gerado (PDF) no Supabase Storage. */
+export function useSalvarContratoGerado() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (entrada: {
+      pdfBlob: Blob;
+      nomeArquivo: string;
+      razaoSocial: string;
+      cnpj: string;
+      planoMensal: number;
+    }) => {
+      // Upload do PDF no Supabase Storage
+      const { data, error } = await cliente().storage
+        .from("contratos_gerados")
+        .upload(`pdfs/${entrada.nomeArquivo}`, entrada.pdfBlob, {
+          contentType: "application/pdf",
+        });
+
+      if (error) throw new Error(`Erro ao fazer upload: ${error.message}`);
+
+      // Salvar metadados no banco
+      const { error: dbError } = await cliente()
+        .from("contratos_gerados")
+        .insert({
+          razao_social: entrada.razaoSocial,
+          cnpj: entrada.cnpj,
+          plano_mensal: entrada.planoMensal,
+          arquivo_pdf: data?.path || entrada.nomeArquivo,
+          data_geracao: new Date().toISOString(),
+        });
+
+      if (dbError) throw new Error(`Erro ao salvar no banco: ${dbError.message}`);
+    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["contratos"] }),
+  });
+}
+
 /** Apaga todos os contratos de um período — usado para refazer uma carga errada. */
 export function useExcluirContratosPeriodo() {
   const queryClient = useQueryClient();

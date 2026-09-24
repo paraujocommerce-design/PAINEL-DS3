@@ -21,6 +21,7 @@ import {
 } from "./api";
 import { usePapelUsuario } from "@/lib/papel-usuario";
 import { DialogNovoContrato } from "./formularios";
+import { DialogGerarContrato } from "./gerar-contrato";
 
 const COLUNAS: Column[] = [
   { key: "data", label: "Data" },
@@ -59,6 +60,7 @@ export function ContratosModule() {
   const [periodo, setPeriodo] = useState(periodoAtual);
   const [busca, setBusca] = useState("");
   const [abrindoDialogo, setAbrindoDialogo] = useState(false);
+  const [abrindoDialogoGerar, setAbrindoDialogoGerar] = useState(false);
 
   const intervalo = useMemo(() => limitesDoPeriodo(periodo), [periodo]);
   const contratos = useContratosLancados(intervalo, periodo);
@@ -126,6 +128,9 @@ export function ContratosModule() {
         <ToolbarSeparator />
         <ClassicButton variant="primary" onClick={() => setAbrindoDialogo(true)}>
           Lançar contrato
+        </ClassicButton>
+        <ClassicButton variant="default" onClick={() => setAbrindoDialogoGerar(true)}>
+          Gerar contrato
         </ClassicButton>
       </Toolbar>
 
@@ -235,6 +240,7 @@ export function ContratosModule() {
       )}
 
       <DialogNovoContrato open={abrindoDialogo} onClose={() => setAbrindoDialogo(false)} />
+      <DialogGerarContrato open={abrindoDialogoGerar} onClose={() => setAbrindoDialogoGerar(false)} />
     </Window>
   );
 }
