@@ -177,17 +177,29 @@ export async function gerarPDFContrato(dados: DadosContrato): Promise<Blob> {
       `R$ ${p.valor.toFixed(2)}`,
     ]);
 
-    (doc as any).autoTable({
-      startY: yPos,
-      head: [["OPÇÃO", "DESCRIÇÃO", "QTD", "VALOR"]],
-      body: tableData,
-      margin: { left: margin, right: margin },
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fontStyle: "bold", fillColor: [200, 200, 200] },
-      columnStyles: { 0: { halign: "center", cellWidth: 20 }, 2: { halign: "center", cellWidth: 15 }, 3: { halign: "right", cellWidth: 25 } },
-    });
+    try {
+      (doc as any).autoTable({
+        startY: yPos,
+        head: [["OPÇÃO", "DESCRIÇÃO", "QTD", "VALOR"]],
+        body: tableData,
+        margin: { left: margin, right: margin },
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fontStyle: "bold", fillColor: [200, 200, 200] },
+        columnStyles: { 0: { halign: "center", cellWidth: 20 }, 2: { halign: "center", cellWidth: 15 }, 3: { halign: "right", cellWidth: 25 } },
+      });
 
-    yPos = (doc as any).lastAutoTable.finalY + 5;
+      yPos = (doc as any).lastAutoTable.finalY + 5;
+    } catch (e) {
+      // Fallback: se autoTable falhar, desenhar manualmente
+      yPos += 5;
+      doc.setFontSize(8);
+      doc.text("PRODUTOS SELECIONADOS", margin, yPos);
+      yPos += 4;
+      tableData.forEach((row) => {
+        doc.text(row.join(" | "), margin, yPos);
+        yPos += 3;
+      });
+    }
   }
 
   // Vencimento
