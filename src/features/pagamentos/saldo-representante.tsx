@@ -8,7 +8,7 @@ import {
   Window,
 } from "@/components/w2k";
 import { useQuery } from "@tanstack/react-query";
-import { cliente } from "@/lib/cliente";
+import { supabase } from "@/lib/supabase";
 
 interface SaldoRepresentante {
   representante_id: string;
@@ -54,7 +54,7 @@ export function SaldoRepresentante({
     queryKey: ["saldo-representante", representanteId],
     queryFn: async () => {
       if (!representanteId) return null;
-      const { data, error } = await cliente()
+      const { data, error } = await supabase
         .from("v_saldo_representante_detalhado")
         .select("*")
         .eq("representante_id", representanteId)
@@ -70,7 +70,7 @@ export function SaldoRepresentante({
     queryKey: ["extrato-representante", representanteId, filtroStatus],
     queryFn: async () => {
       if (!representanteId) return [];
-      const { data, error } = await cliente()
+      const { data, error } = await supabase
         .from("v_relatorio_pagamento")
         .select("*")
         .eq("representante_id", representanteId)

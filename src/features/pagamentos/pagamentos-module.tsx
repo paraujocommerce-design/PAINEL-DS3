@@ -121,12 +121,13 @@ export function PagamentosModule() {
       </Toolbar>
 
       <Panel>
-        {aba === "acoes" ? (
+        {aba === "acoes" && (
           <DashboardAcoes onAbrirOrdem={(id) => {
             setOrdemAbertaId(id);
             setAba("ordens");
           }} />
-        ) : aba === "contratos" ? (
+        )}
+        {aba === "contratos" && (
           <>
             <div className="mb-3 flex gap-2">
               <select
@@ -179,7 +180,8 @@ export function PagamentosModule() {
               </div>
             )}
           </>
-        ) : (
+        )}
+        {aba === "ordens" && (
           <>
             <div className="mb-3">
               <input
@@ -223,7 +225,8 @@ export function PagamentosModule() {
               </div>
             )}
           </>
-        ) : aba === "saldo" ? (
+        )}
+        {aba === "saldo" && (
           <>
             <div className="mb-3 flex gap-2">
               <select
@@ -248,7 +251,7 @@ export function PagamentosModule() {
               />
             )}
           </>
-        ) : null}
+        )}
       </Panel>
 
       <WizardNovaOrdem
