@@ -40,7 +40,7 @@ export function useContratosAguardando(representanteId?: string) {
         .from("v_contratos_aguardando_pagamento")
         .select("*")
         .eq("representante_id", representanteId!)
-        .order("data_venda");
+        .order("data_venda", { ascending: false });
       if (error) throw new Error(error.message);
       return (data ?? []) as ContratoAguardando[];
     },

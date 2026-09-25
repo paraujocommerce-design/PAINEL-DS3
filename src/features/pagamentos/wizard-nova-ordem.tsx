@@ -48,6 +48,11 @@ export function WizardNovaOrdem({
     return new Date().toISOString().slice(0, 10);
   }
 
+  function formatarData(iso: string): string {
+    const [ano, mes, dia] = iso.split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
+
   function avancar() {
     if (passo === 1) {
       if (!representanteId) {
@@ -143,7 +148,7 @@ export function WizardNovaOrdem({
                     }}
                   />
                   <span className="flex-1 text-sm">
-                    <strong>{c.codigo_contrato}</strong> — {c.nome_fantasia}
+                    <strong>{c.codigo_contrato}</strong> — {c.nome_fantasia} · <span className="text-xs text-muted-foreground">{formatarData(c.data_venda)}</span>
                     {c.pos_venda_pendente && (
                       <span className="block text-xs text-orange-600">
                         ⚠ Pós-venda pendente (só adiantamento)
