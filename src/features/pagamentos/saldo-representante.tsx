@@ -9,36 +9,8 @@ import {
 } from "@/components/w2k";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-
-interface SaldoRepresentante {
-  representante_id: string;
-  representante_codigo: string;
-  representante_nome: string;
-  total_a_receber: number;
-  total_pago: number;
-  saldo_devedor: number;
-  saldo_liquido: number;
-}
-
-interface ExtratoBlocos {
-  data_ordem: string;
-  descricao: string;
-  tipo: "crédito" | "débito";
-  valor: number;
-  status: string;
-}
-
-function moeda(valor: number): string {
-  return valor.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-}
-
-function formatarData(iso: string): string {
-  const d = new Date(iso + "T00:00:00Z");
-  return new Intl.DateTimeFormat("pt-BR").format(d);
-}
+import { moeda, formatarData } from "@/lib/formatacao";
+import type { SaldoRepresentanteDetalhado, ExtratoBlocos } from "./tipos";
 
 export function SaldoRepresentante({
   representanteId,
@@ -60,7 +32,7 @@ export function SaldoRepresentante({
         .eq("representante_id", representanteId)
         .single();
       if (error) throw error;
-      return data as SaldoRepresentante;
+      return data as SaldoRepresentanteDetalhado;
     },
     enabled: !!representanteId,
   });
@@ -77,13 +49,13 @@ export function SaldoRepresentante({
         .order("data_referencia", { ascending: false });
       if (error) throw error;
 
-      return (data || []).map((item: any) => ({
-        data_ordem: item.data_referencia,
+      return (data || []).map((item: Record<string, unknown>) => ({
+        data_ordem: String(item.data_referencia),
         descricao:
-          `${item.rubrica} - ${item.codigo_contrato || "Manual"}`.trim(),
-        tipo: item.valor_liquido < 0 ? ("débito" as const) : ("crédito" as const),
-        valor: Math.abs(item.valor_liquido),
-        status: item.status || "registrado",
+          `${item.rubrica} - ${(item.codigo_contrato as string | null) || "Manual"}`.trim(),
+        tipo: (Number(item.valor_liquido) < 0 ? "débito" : "crédito") as const,
+        valor: Math.abs(Number(item.valor_liquido)),
+        status: String(item.status || "registrado"),
       }));
     },
     enabled: !!representanteId,

@@ -20,6 +20,7 @@ import {
   useExcluirContrato,
 } from "./api";
 import { usePapelUsuario } from "@/lib/papel-usuario";
+import { moeda, formatarData, periodoAtual, limitesDoPeriodo } from "@/lib/formatacao";
 import { DialogNovoContrato } from "./formularios";
 import { DialogGerarContrato } from "./gerar-contrato";
 
@@ -34,27 +35,6 @@ const COLUNAS: Column[] = [
   { key: "situacao", label: "Situação" },
   { key: "acao", label: "" },
 ];
-
-function periodoAtual(): string {
-  return new Date().toISOString().slice(0, 7);
-}
-
-function limitesDoPeriodo(periodo: string): { inicio: string; fim: string } {
-  const [ano, mes] = periodo.split("-").map(Number);
-  const inicio = new Date(Date.UTC(ano!, mes! - 1, 1));
-  const fim = new Date(Date.UTC(ano!, mes!, 0));
-  return { inicio: inicio.toISOString().slice(0, 10), fim: fim.toISOString().slice(0, 10) };
-}
-
-function moeda(valor: number | null): string {
-  if (valor === null) return "—";
-  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function formatarData(iso: string): string {
-  const [ano, mes, dia] = iso.split("-");
-  return `${dia}/${mes}/${ano}`;
-}
 
 export function ContratosModule() {
   const [periodo, setPeriodo] = useState(periodoAtual);
